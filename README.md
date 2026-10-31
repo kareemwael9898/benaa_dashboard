@@ -165,10 +165,11 @@ Firestore `returns` ──▶ FirestoreFinancialReturnsRemoteDataSource.watch()
                      ──▶ FinancialReturnsCubit ──▶ FinancialReturnsLoaded
 ```
 
-`FinancialReturnsLoaded` holds *every* row plus the filter (`selectedCity` and
-the phone `query`); the visible subset and the KPI tiles are getters on the
-state. Changing a filter therefore re-filters in memory — no refetch, no
-loading flash, and the tiles always describe exactly the rows on screen:
+`FinancialReturnsLoaded` holds *every* row plus the filter row (`selectedCity`,
+`selectedStatus`, `selectedPeriod` and the phone `query`); the visible subset and
+the KPI tiles are getters on the state. Changing a filter therefore re-filters
+in memory — no refetch, no loading flash, and the tiles always describe exactly
+the rows on screen:
 
 | Tile | Value |
 |---|---|
@@ -181,23 +182,35 @@ never drift from the table beneath it.
 
 ## Filters and search
 
-The frame repeats the same dropdown three times; all three are bound to one
-`selectedCity` value, so whichever pill is used the table follows and the other
-two update with it — no pill is decorative.
+The frame repeats the same dropdown three times. Each repetition is a real
+filter here, labelled as such, and the four filters combine with **AND** — a row
+must survive all of them to reach the table, the KPI tiles and the PDF.
 
-- Options are `الكل` (the default), the known cities, then any city that only
-  exists in the data, plus `غير محدد` for rows with a blank `cityId`. The
-  selected value is always kept in the list, so a pill never flips to a blank
-  label when its last row disappears.
+| Pill | Options | Field |
+|---|---|---|
+| `المدينة` | `الكل` (default), the known cities, any city that only exists in the data, plus `غير محدد` for rows with a blank `cityId` | `cityId` |
+| `الحالة` | `الكل` (default), `مفعل`, `قيد المراجعة`, `موقوف` | `status` |
+| `الفترة` | `الكل` (default), `هذا الشهر`, `آخر ٣ أشهر`, `هذا العام` | `createdAt` |
+| `بحث برقم الجوال` | free text | `phone` / `alternatePhone` |
+
+- `هذا الشهر` is the current calendar month; `آخر ٣ أشهر` is this month plus the
+  two before it; `هذا العام` is the current year. The windows are calendar
+  based, not rolling days, so they still read correctly on the 1st of a month.
+  A row with no `createdAt` can't be placed in a window, so it only shows under
+  `الكل` (it is still listed — and sorted as newest — everywhere else).
+- The period is evaluated whenever the list is read, so a screen left open past
+  midnight keeps describing the right window.
+- City options keep the selected value even when its last row disappears, so a
+  pill never flips to a blank label.
 - `بحث برقم الجوال` is a real field: it matches the primary and alternate phone
   numbers after normalising (digits only, `+966`/`00`/trunk `0` stripped,
   Arabic-Indic digits folded), so `0501234567`, `+966 50 123 4567` and
   `٥٠١٢٣٤٥٦٧` all find the same row.
-- City and search combine with AND; the KPIs, the table and the PDF all read
-  the same visible list, so they can't drift.
+- An unknown option label falls back to "no filter" instead of hiding every
+  row, so stale state can never blank the screen.
 - When the filters exclude everything, the table says
-  `لا توجد نتائج مطابقة للفلاتر` and offers `مسح الفلاتر` (a truly empty
-  collection still reads `لا توجد بيانات`).
+  `لا توجد نتائج مطابقة للفلاتر` and offers `مسح الفلاتر`, which resets all four
+  at once (a truly empty collection still reads `لا توجد بيانات`).
 
 ## PDF export / print
 
@@ -206,7 +219,8 @@ PDF, entirely client-side (`pdf` + `printing`) — no backend endpoint, so the
 report can never disagree with the table.
 
 - `FinancialReturnsPdfBuilder` (in `model/`) builds the document: header with
-  build timestamp, active filter chips, the KPI tiles, and a paginated table
+  build timestamp, one chip per filter (`المدينة`, `الحالة`, `الفترة`, plus
+  `البحث` when it is in use), the KPI tiles, and a paginated table
   whose header row repeats on every page. Arabic shaping, RTL and the embedded
   font subset all come from the bundled IBM Plex Sans Arabic files.
 - Status chips keep their on-screen colours (green / gold / red) in print.
@@ -241,13 +255,18 @@ the table.
 flutter test
 ```
 
-- `financial_returns_cubit_test.dart` — load, in-memory city filter, cached
-  first frame then live frame, failure state, plus PDF generation and its two
-  `null` paths.
+- `financial_returns_cubit_test.dart` — load, in-memory city / status / period
+  filters (individually and combined), filters surviving a live frame, clear,
+  cached first frame then live frame, failure state, plus PDF generation and its
+  two `null` paths.
 - `financial_returns_kpi_test.dart` — sums, active count, empty list, decimals.
 - `returns_filters_test.dart` — phone normalisation (every spelling of the same
   number), `الكل`, cities that only exist in the data, the uncategorised bucket,
-  and the guarantee that the current selection stays in the option list.
+  the status options / label mapping, and the guarantee that the current
+  selection stays in the option list.
+- `returns_period_test.dart` — each period window (month, three months, year),
+  the new-year rollover, rows with no date, and UTC timestamps read in local
+  time.
 - `financial_returns_pdf_test.dart` — the bytes are a terminated PDF with an
   embedded font, and the empty-state report still renders.
 - `admin_returns_cubit_test.dart` — load, create/delete with success feedback,
@@ -261,13 +280,16 @@ flutter test
 
 | Where | What the file contains |
 |---|---|
-| Filter row | Three identical dropdowns — all three now drive the same city; the label reads `المدينة` |
+| Filter row | Three identical dropdowns — kept as three real filters instead: `المدينة`, `الحالة`, `الفترة` |
 | Table header | All five columns read `رقم الجوال` |
 | Sidebar | `صلاحيات المستخدم` repeated 5× — collapsed to one |
 | Logo | Mark is drawn as three gold bars; the Figma paths were not exported |
 | Brand font | Cairo ExtraBold is a variable font, weight applied via `fontVariations` |
 
-The four repeated `رقم الجوال` headers are still in the design's constant
+The filter row no longer repeats one dropdown: the file drew the same component
+three times with no second or third field, so the row was mapped to city, status
+and period — the three columns the table already shows. The four repeated
+`رقم الجوال` headers are still in the design's constant
 (`kReturnsTableHeaders`) — the admin page doesn't touch headers. The magic row
 (`____ ريال`, `#/#/#`, repeated phone) is now a real record in `returns`; its
 demo copy lives in `kDemoFinancialReturns`.

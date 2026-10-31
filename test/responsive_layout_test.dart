@@ -7,6 +7,7 @@ import 'package:benaa_dashboard/features/financial_returns/model/financial_retur
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_kpi_builder.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_summary.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/returns_filters.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/returns_period.dart';
 import 'package:benaa_dashboard/features/financial_returns/view/widgets/kpi_card.dart';
 import 'package:benaa_dashboard/features/financial_returns/view/widgets/kpi_summary_panel.dart';
 import 'package:benaa_dashboard/features/financial_returns/view/widgets/returns_filter_field.dart';
@@ -92,9 +93,26 @@ Future<void> _pumpAt(
 }
 
 Widget _filters() => ReturnsFiltersSection(
-  cityOptions: const <String>[kAllCities, 'الدمام', 'الرياض'],
-  selectedCity: kAllCities,
-  onCitySelected: (_) {},
+  fields: <ReturnsFilterField>[
+    ReturnsFilterField(
+      label: 'المدينة',
+      options: const <String>[kAllCities, 'الدمام', 'الرياض'],
+      value: kAllCities,
+      onSelected: (_) {},
+    ),
+    ReturnsFilterField(
+      label: 'الحالة',
+      options: statusFilterOptions,
+      value: kAllStatuses,
+      onSelected: (_) {},
+    ),
+    ReturnsFilterField(
+      label: 'الفترة',
+      options: periodFilterOptions,
+      value: ReturnsPeriod.all.label,
+      onSelected: (_) {},
+    ),
+  ],
   onPrint: () {},
   onExportPdf: () {},
 );
@@ -167,6 +185,18 @@ void main() {
       ];
       expect(tops, hasLength(3));
       expect(tops.map((Offset o) => o.dy).toSet(), hasLength(1));
+    });
+
+    testWidgets('each pill filters something different', (
+      WidgetTester tester,
+    ) async {
+      await _pumpAt(tester, _desktop, _filters());
+
+      // The frame draws one dropdown three times; these are the three fields.
+      expect(find.text('المدينة'), findsOneWidget);
+      expect(find.text('الحالة'), findsOneWidget);
+      expect(find.text('الفترة'), findsOneWidget);
+      expect(find.byType(ReturnsFilterFieldView), findsNWidgets(3));
     });
   });
 

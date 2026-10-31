@@ -7,11 +7,12 @@ FinancialReturn _row({
   String cityId = 'الدمام',
   String phone = '+966 50 123 4567',
   String alternatePhone = '+966 50 765 4321',
+  FinancialReturnStatus status = FinancialReturnStatus.active,
 }) {
   return FinancialReturn(
     id: 'r',
     cityId: cityId,
-    status: FinancialReturnStatus.active,
+    status: status,
     amount: 1,
     reference: 'REF',
     phone: phone,
@@ -72,6 +73,43 @@ void main() {
     });
   });
 
+  group('status filter', () {
+    test('options are الكل plus every status, in enum order', () {
+      expect(statusFilterOptions, <String>[
+        kAllStatuses,
+        'مفعل',
+        'قيد المراجعة',
+        'موقوف',
+      ]);
+    });
+
+    test('a label maps back to its status', () {
+      expect(statusFromFilterValue('مفعل'), FinancialReturnStatus.active);
+      expect(
+        statusFromFilterValue('قيد المراجعة'),
+        FinancialReturnStatus.pending,
+      );
+      expect(statusFromFilterValue('موقوف'), FinancialReturnStatus.suspended);
+    });
+
+    test('الكل and unknown labels mean "no status filter"', () {
+      expect(statusFromFilterValue(kAllStatuses), isNull);
+      expect(statusFromFilterValue('حالة قديمة'), isNull);
+    });
+
+    test('matchesStatus keeps only the selected status', () {
+      final FinancialReturn pending = _row(
+        status: FinancialReturnStatus.pending,
+      );
+      final FinancialReturn active = _row();
+
+      expect(matchesStatus(pending, null), isTrue, reason: 'no filter');
+      expect(matchesStatus(pending, FinancialReturnStatus.pending), isTrue);
+      expect(matchesStatus(pending, FinancialReturnStatus.active), isFalse);
+      expect(matchesStatus(active, FinancialReturnStatus.pending), isFalse);
+    });
+  });
+
   group('cityOf', () {
     test('blank city becomes the uncategorised bucket', () {
       expect(cityOf(_row(cityId: '')), kUncategorisedCity);
@@ -100,10 +138,9 @@ void main() {
 
   group('cityOptionsFor', () {
     test('الكل comes first, then the known cities', () {
-      final List<String> options = cityOptionsFor(
-        <FinancialReturn>[_row()],
-        kAllCities,
-      );
+      final List<String> options = cityOptionsFor(<FinancialReturn>[
+        _row(),
+      ], kAllCities);
 
       expect(options.first, kAllCities);
       expect(options.take(1 + kKnownCities.length), <String>[
@@ -113,13 +150,10 @@ void main() {
     });
 
     test('cities that only exist in the data are appended and sorted', () {
-      final List<String> options = cityOptionsFor(
-        <FinancialReturn>[
-          _row(cityId: 'الخبر'),
-          _row(cityId: 'أبها'),
-        ],
-        kAllCities,
-      );
+      final List<String> options = cityOptionsFor(<FinancialReturn>[
+        _row(cityId: 'الخبر'),
+        _row(cityId: 'أبها'),
+      ], kAllCities);
 
       expect(options, containsAll(<String>['الخبر', 'أبها']));
       final int firstExtra = 1 + kKnownCities.length;
@@ -138,19 +172,18 @@ void main() {
     });
 
     test('the current selection is never dropped from the list', () {
-      final List<String> options = cityOptionsFor(
-        <FinancialReturn>[_row(cityId: 'جدة')],
-        'مدينة محذوفة',
-      );
+      final List<String> options = cityOptionsFor(<FinancialReturn>[
+        _row(cityId: 'جدة'),
+      ], 'مدينة محذوفة');
 
       expect(options, contains('مدينة محذوفة'));
     });
 
     test('no duplicates when a known city is also in the data', () {
-      final List<String> options = cityOptionsFor(
-        <FinancialReturn>[_row(cityId: 'جدة'), _row(cityId: 'جدة')],
-        kAllCities,
-      );
+      final List<String> options = cityOptionsFor(<FinancialReturn>[
+        _row(cityId: 'جدة'),
+        _row(cityId: 'جدة'),
+      ], kAllCities);
 
       expect(options.where((String c) => c == 'جدة'), hasLength(1));
     });

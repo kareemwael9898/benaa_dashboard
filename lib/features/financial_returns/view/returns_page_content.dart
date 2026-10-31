@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:printing/printing.dart';
 
 import '../../../core/theme/app_dimens.dart';
+import '../model/returns_filters.dart';
+import '../model/returns_period.dart';
 import '../view_model/financial_returns_cubit.dart';
 import '../view_model/financial_returns_state.dart';
 import 'widgets/kpi_summary_panel.dart';
@@ -33,9 +35,28 @@ class ReturnsPageContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ReturnsFiltersSection(
-            cityOptions: state.cityOptions,
-            selectedCity: state.selectedCity,
-            onCitySelected: cubit.selectCity,
+            fields: <ReturnsFilterField>[
+              ReturnsFilterField(
+                label: 'المدينة',
+                options: state.cityOptions,
+                value: state.selectedCity,
+                onSelected: cubit.selectCity,
+              ),
+              ReturnsFilterField(
+                label: 'الحالة',
+                options: statusFilterOptions,
+                value: state.selectedStatus?.label ?? kAllStatuses,
+                onSelected: (String label) =>
+                    cubit.selectStatus(statusFromFilterValue(label)),
+              ),
+              ReturnsFilterField(
+                label: 'الفترة',
+                options: periodFilterOptions,
+                value: state.selectedPeriod.label,
+                onSelected: (String label) =>
+                    cubit.selectPeriod(periodFromLabel(label)),
+              ),
+            ],
             onPrint: () => _handOffReport(context, print: true),
             onExportPdf: () => _handOffReport(context, print: false),
           ),

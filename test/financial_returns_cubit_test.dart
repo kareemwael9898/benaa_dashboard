@@ -11,6 +11,7 @@ import 'package:benaa_dashboard/features/financial_returns/model/financial_retur
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_repository.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_summary.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/returns_filters.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/returns_period.dart';
 import 'package:benaa_dashboard/features/financial_returns/view_model/financial_returns_cubit.dart';
 import 'package:benaa_dashboard/features/financial_returns/view_model/financial_returns_state.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -107,7 +108,7 @@ void main() {
     expect(state.summaries.first.value, '21,700 ريال');
   });
 
-  test('a live frame keeps the selected city and the query', () async {
+  test('a live frame keeps every filter', () async {
     final _StreamingRemote remote = _StreamingRemote();
     final FinancialReturnsCubit live = _cubitWith(remote: remote);
     addTearDown(live.close);
@@ -119,6 +120,8 @@ void main() {
 
     live.selectCity('الرياض');
     live.search(remote.rows.last.phone);
+    live.selectStatus(FinancialReturnStatus.pending);
+    live.selectPeriod(ReturnsPeriod.lastThreeMonths);
 
     // An admin edit lands while the user is filtered.
     remote.emit(kDemoFinancialReturns);
@@ -127,6 +130,8 @@ void main() {
     final FinancialReturnsLoaded state = live.state as FinancialReturnsLoaded;
     expect(state.selectedCity, 'الرياض');
     expect(state.query, remote.rows.last.phone);
+    expect(state.selectedStatus, FinancialReturnStatus.pending);
+    expect(state.selectedPeriod, ReturnsPeriod.lastThreeMonths);
     expect(state.rows, hasLength(3), reason: 'rows refresh, filter does not');
   });
 
@@ -164,51 +169,143 @@ void main() {
     expect(state.hasActiveFilters, isTrue);
   });
 
-  test('clearFilters resets the city and the query', () async {
+  test('selecting a status keeps only that status', () async {
+    cubit.load();
+    await pumpEventQueue();
+
+    cubit.selectStatus(FinancialReturnStatus.pending);
+
+    final FinancialReturnsLoaded state = cubit.state as FinancialReturnsLoaded;
+    expect(state.selectedStatus, FinancialReturnStatus.pending);
+    expect(state.returns, hasLength(1));
+    expect(state.returns.single.reference, 'RET-1002');
+    expect(state.summaries.first.value, '7,500 ريال');
+
+    cubit.selectStatus(null);
+
+    final FinancialReturnsLoaded cleared =
+        cubit.state as FinancialReturnsLoaded;
+    expect(cleared.selectedStatus, isNull);
+    expect(cleared.returns, hasLength(3));
+  });
+
+  test('selecting a period keeps only rows created inside it', () async {
+    final DateTime now = DateTime.now();
+    final _StreamingRemote remote = _StreamingRemote();
+    final FinancialReturnsCubit live = _cubitWith(remote: remote);
+    addTearDown(live.close);
+
+    financialRow(String reference, DateTime? createdAt) => FinancialReturn(
+      id: reference,
+      cityId: 'الدمام',
+      status: FinancialReturnStatus.active,
+      amount: 100,
+      reference: reference,
+      phone: '+966 50 000 0000',
+      alternatePhone: '+966 50 000 0000',
+      createdAt: createdAt,
+    );
+
+    live.load();
+    await pumpEventQueue();
+    remote.emit(<FinancialReturn>[
+      financialRow('THIS_MONTH', now),
+      financialRow('LAST_MONTH', DateTime(now.year, now.month - 1, 15)),
+      financialRow('SIX_MONTHS', DateTime(now.year, now.month - 6, 15)),
+      financialRow('UNDATED', null),
+    ]);
+    await pumpEventQueue();
+
+    live.selectPeriod(ReturnsPeriod.thisMonth);
+    expect(
+      (live.state as FinancialReturnsLoaded).returns.map((r) => r.reference),
+      <String>['THIS_MONTH'],
+    );
+
+    live.selectPeriod(ReturnsPeriod.lastThreeMonths);
+    expect(
+      (live.state as FinancialReturnsLoaded).returns.map((r) => r.reference),
+      <String>['THIS_MONTH', 'LAST_MONTH'],
+    );
+
+    live.selectPeriod(ReturnsPeriod.all);
+    expect((live.state as FinancialReturnsLoaded).returns, hasLength(4));
+  });
+
+  test('city, status, period and search combine with AND', () async {
+    cubit.load();
+    await pumpEventQueue();
+
+    // The Riyadh row is active; الدمام has one active and one pending row.
+    cubit.selectCity('الدمام');
+    cubit.selectStatus(FinancialReturnStatus.active);
+    cubit.selectPeriod(ReturnsPeriod.all);
+
+    final FinancialReturnsLoaded state = cubit.state as FinancialReturnsLoaded;
+    expect(state.returns, hasLength(1));
+    expect(state.returns.single.reference, '#/#/#');
+
+    cubit.search('0539072214');
+
+    expect(
+      (cubit.state as FinancialReturnsLoaded).returns,
+      isEmpty,
+      reason: 'that phone belongs to the Riyadh row, which the city excludes',
+    );
+  });
+
+  test('clearFilters resets every pill and the query', () async {
     cubit.load();
     await pumpEventQueue();
     cubit.selectCity('الرياض');
     cubit.search('0539');
+    cubit.selectStatus(FinancialReturnStatus.pending);
+    cubit.selectPeriod(ReturnsPeriod.thisMonth);
 
     cubit.clearFilters();
 
     final FinancialReturnsLoaded state = cubit.state as FinancialReturnsLoaded;
     expect(state.selectedCity, kAllCities);
     expect(state.query, isEmpty);
+    expect(state.selectedStatus, isNull);
+    expect(state.selectedPeriod, ReturnsPeriod.all);
+    expect(state.hasActiveFilters, isFalse);
     expect(state.returns, hasLength(3));
   });
 
-  test('city options stay reachable for cities that only exist in the data',
-      () async {
-    final _StreamingRemote remote = _StreamingRemote();
-    final FinancialReturnsCubit live = _cubitWith(remote: remote);
-    addTearDown(live.close);
+  test(
+    'city options stay reachable for cities that only exist in the data',
+    () async {
+      final _StreamingRemote remote = _StreamingRemote();
+      final FinancialReturnsCubit live = _cubitWith(remote: remote);
+      addTearDown(live.close);
 
-    live.load();
-    await pumpEventQueue();
-    remote.emit(<FinancialReturn>[
-      ...kDemoFinancialReturns,
-      const FinancialReturn(
-        id: 'extra',
-        cityId: 'الخبر',
-        status: FinancialReturnStatus.active,
-        amount: 100,
-        reference: 'RET-9',
-        phone: '+966 50 000 0001',
-        alternatePhone: '+966 50 000 0001',
-      ),
-    ]);
-    await pumpEventQueue();
+      live.load();
+      await pumpEventQueue();
+      remote.emit(<FinancialReturn>[
+        ...kDemoFinancialReturns,
+        const FinancialReturn(
+          id: 'extra',
+          cityId: 'الخبر',
+          status: FinancialReturnStatus.active,
+          amount: 100,
+          reference: 'RET-9',
+          phone: '+966 50 000 0001',
+          alternatePhone: '+966 50 000 0001',
+        ),
+      ]);
+      await pumpEventQueue();
 
-    final FinancialReturnsLoaded state = live.state as FinancialReturnsLoaded;
-    expect(state.cityOptions, contains('الخبر'));
+      final FinancialReturnsLoaded state = live.state as FinancialReturnsLoaded;
+      expect(state.cityOptions, contains('الخبر'));
 
-    live.selectCity('الخبر');
-    expect(
-      (live.state as FinancialReturnsLoaded).returns.single.reference,
-      'RET-9',
-    );
-  });
+      live.selectCity('الخبر');
+      expect(
+        (live.state as FinancialReturnsLoaded).returns.single.reference,
+        'RET-9',
+      );
+    },
+  );
 
   test('cached payload paints before the live stream arrives', () async {
     cache.payload = FinancialReturnsPayload(
@@ -290,6 +387,8 @@ class _ThrowingPdfBuilder extends FinancialReturnsPdfBuilder {
     required List<FinancialSummary> summaries,
     required List<FinancialReturn> returns,
     required String selectedCity,
+    required String selectedStatus,
+    required String selectedPeriod,
     required String query,
     DateTime? generatedAt,
   }) async {

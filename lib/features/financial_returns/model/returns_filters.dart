@@ -1,4 +1,5 @@
 import 'financial_return.dart';
+import 'financial_return_status.dart';
 
 /// Value of the "all cities" option — the default selection.
 const String kAllCities = 'الكل';
@@ -6,9 +7,12 @@ const String kAllCities = 'الكل';
 /// Bucket for rows whose `cityId` is empty or blank.
 const String kUncategorisedCity = 'غير محدد';
 
-/// The design shows three pills. They are all bound to the same city value, so
-/// whichever one is used, the other two follow — no pill is decorative.
+/// The frame repeats one dropdown three times. Each repetition is a real filter
+/// here: city, status and period, combined with AND.
 const int kFilterPillCount = 3;
+
+/// Value of the "all statuses" option — the default selection.
+const String kAllStatuses = 'الكل';
 
 /// Cities offered when creating a row, and pre-seeded in the dropdowns.
 ///
@@ -62,6 +66,25 @@ List<String> cityOptionsFor(List<FinancialReturn> rows, String selectedCity) {
 
 bool matchesCity(FinancialReturn row, String selectedCity) =>
     selectedCity == kAllCities || cityOf(row) == selectedCity;
+
+/// The status pill's options: `الكل` plus every status, in enum order.
+final List<String> statusFilterOptions = <String>[
+  kAllStatuses,
+  for (final FinancialReturnStatus status in FinancialReturnStatus.values)
+    status.label,
+];
+
+/// The status behind a pill value; `الكل` (or an unknown label) means "no
+/// status filter".
+FinancialReturnStatus? statusFromFilterValue(String value) {
+  for (final FinancialReturnStatus status in FinancialReturnStatus.values) {
+    if (status.label == value) return status;
+  }
+  return null;
+}
+
+bool matchesStatus(FinancialReturn row, FinancialReturnStatus? status) =>
+    status == null || row.status == status;
 
 const String _arabicIndicDigits = '٠١٢٣٤٥٦٧٨٩';
 const String _extendedArabicIndicDigits = '۰۱۲۳۴۵۶۷۸۹';

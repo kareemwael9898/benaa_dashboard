@@ -55,6 +55,8 @@ class FinancialReturnsPdfBuilder {
     required List<FinancialSummary> summaries,
     required List<FinancialReturn> returns,
     required String selectedCity,
+    required String selectedStatus,
+    required String selectedPeriod,
     required String query,
     DateTime? generatedAt,
   }) async {
@@ -81,7 +83,12 @@ class FinancialReturnsPdfBuilder {
         build: (pw.Context context) => <pw.Widget>[
           _header(stamp),
           pw.SizedBox(height: 14),
-          _filterChips(selectedCity: selectedCity, query: query),
+          _filterChips(
+            selectedCity: selectedCity,
+            selectedStatus: selectedStatus,
+            selectedPeriod: selectedPeriod,
+            query: query,
+          ),
           pw.SizedBox(height: 12),
           _kpiRow(summaries),
           pw.SizedBox(height: 18),
@@ -165,14 +172,19 @@ class FinancialReturnsPdfBuilder {
     );
   }
 
-  /// States the filters that were actually applied — the old three identical
-  /// `الدولة` chips claimed filters the table never used.
+  /// States the filters that were actually applied, one chip per pill of the
+  /// row, plus the search when it is in use — the old three identical `الدولة`
+  /// chips claimed filters the table never used.
   pw.Widget _filterChips({
     required String selectedCity,
+    required String selectedStatus,
+    required String selectedPeriod,
     required String query,
   }) {
     final List<(String, String)> chips = <(String, String)>[
       ('المدينة', selectedCity),
+      ('الحالة', selectedStatus),
+      ('الفترة', selectedPeriod),
       if (query.trim().isNotEmpty) ('البحث', query.trim()),
     ];
 

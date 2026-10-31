@@ -7,7 +7,11 @@ import 'financial_return_status.dart';
 /// The first entry mirrors the Figma frame exactly (`#/#/#`, repeated phone).
 /// The other two are the smallest addition that makes the city filter and the
 /// KPI sums demonstrable instead of trivially "1 row".
-const List<FinancialReturn> kDemoFinancialReturns = <FinancialReturn>[
+/// Dates are relative to first use, so "هذا الشهر" and "آخر ٣ أشهر" always have
+/// a row to show in mock mode (the live source stamps real dates).
+final DateTime _demoNow = DateTime.now();
+
+final List<FinancialReturn> kDemoFinancialReturns = <FinancialReturn>[
   FinancialReturn(
     id: '',
     cityId: 'الدمام',
@@ -16,6 +20,7 @@ const List<FinancialReturn> kDemoFinancialReturns = <FinancialReturn>[
     reference: '#/#/#',
     phone: '+966 50 123 4567',
     alternatePhone: '+966 50 123 4567',
+    createdAt: _demoNow,
   ),
   FinancialReturn(
     id: '',
@@ -25,6 +30,7 @@ const List<FinancialReturn> kDemoFinancialReturns = <FinancialReturn>[
     reference: 'RET-1002',
     phone: '+966 55 441 8890',
     alternatePhone: '+966 55 441 8890',
+    createdAt: _demoNow.subtract(const Duration(days: 45)),
   ),
   FinancialReturn(
     id: '',
@@ -34,5 +40,6 @@ const List<FinancialReturn> kDemoFinancialReturns = <FinancialReturn>[
     reference: 'RET-1003',
     phone: '+966 53 907 2214',
     alternatePhone: '+966 53 907 2214',
+    createdAt: _demoNow.subtract(const Duration(days: 120)),
   ),
 ];

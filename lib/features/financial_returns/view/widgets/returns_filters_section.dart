@@ -8,11 +8,31 @@ import '../../model/returns_filters.dart';
 import 'returns_action_button.dart';
 import 'returns_filter_field.dart';
 
-/// The "انواع الباقات" block: three city pills, then the print / PDF actions.
+/// One dropdown of the filter row: its label, its options and its own value.
 ///
-/// The frame repeats the same dropdown three times; they are all bound to
-/// [selectedCity] here, so whichever pill is used, the table follows and the
-/// other two update with it.
+/// The frame draws one component three times; each repetition is a different
+/// filter here (city, status, period), so this widget takes them as a list
+/// instead of hard-coding three identical pills.
+@immutable
+class ReturnsFilterField {
+  const ReturnsFilterField({
+    required this.label,
+    required this.options,
+    required this.value,
+    required this.onSelected,
+  });
+
+  final String label;
+  final List<String> options;
+  final String value;
+  final ValueChanged<String> onSelected;
+}
+
+/// The "انواع الباقات" block: the filter pills, then the print / PDF actions.
+///
+/// The frame repeats the same dropdown three times; each one is a real filter
+/// (city, status, period) and they combine with AND. The layout is shared, so a
+/// pill is laid out by its position in [fields], never by what it filters.
 ///
 /// Presentation follows the room available:
 /// * narrow phones (under 600) stack the pills and the actions full width;
@@ -24,16 +44,14 @@ import 'returns_filter_field.dart';
 class ReturnsFiltersSection extends StatelessWidget {
   const ReturnsFiltersSection({
     super.key,
-    required this.cityOptions,
-    required this.selectedCity,
-    required this.onCitySelected,
+    required this.fields,
     required this.onPrint,
     required this.onExportPdf,
-  });
+  }) : assert(fields.length == kFilterPillCount, 'the row holds three pills');
 
-  final List<String> cityOptions;
-  final String selectedCity;
-  final ValueChanged<String> onCitySelected;
+  /// City, status and period, in the order the frame draws them.
+  final List<ReturnsFilterField> fields;
+
   final VoidCallback onPrint;
   final VoidCallback onExportPdf;
 
@@ -45,12 +63,12 @@ class ReturnsFiltersSection extends StatelessWidget {
     final bool spread = context.isCompactLayout && !stacked;
 
     final List<Widget> pills = <Widget>[
-      for (int i = 0; i < kFilterPillCount; i++)
+      for (final ReturnsFilterField field in fields)
         ReturnsFilterFieldView(
-          label: 'المدينة',
-          options: cityOptions,
-          value: selectedCity,
-          onSelected: onCitySelected,
+          label: field.label,
+          options: field.options,
+          value: field.value,
+          onSelected: field.onSelected,
           width: stacked || spread ? double.infinity : null,
         ),
     ];

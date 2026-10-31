@@ -30,6 +30,8 @@ void main() {
       summaries: const <FinancialSummary>[_summary, _summary, _summary],
       returns: const <FinancialReturn>[_row],
       selectedCity: 'الدمام',
+      selectedStatus: 'مفعل',
+      selectedPeriod: 'هذا الشهر',
       query: '',
       generatedAt: DateTime(2026, 10, 29, 13, 15, 57),
     );
@@ -52,6 +54,8 @@ void main() {
       summaries: const <FinancialSummary>[_summary],
       returns: const <FinancialReturn>[],
       selectedCity: 'الدمام',
+      selectedStatus: 'مفعل',
+      selectedPeriod: 'هذا الشهر',
       query: '',
     );
 
@@ -64,6 +68,8 @@ void main() {
       summaries: const <FinancialSummary>[_summary],
       returns: const <FinancialReturn>[_row],
       selectedCity: 'الدمام',
+      selectedStatus: 'مفعل',
+      selectedPeriod: 'هذا الشهر',
       query: '',
     );
 

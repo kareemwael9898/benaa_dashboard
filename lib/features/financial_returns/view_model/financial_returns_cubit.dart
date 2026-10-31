@@ -3,10 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../model/financial_return_status.dart';
 import '../model/financial_returns_payload.dart';
 import '../model/financial_returns_pdf_builder.dart';
 import '../model/financial_returns_repository.dart';
 import '../model/returns_filters.dart';
+import '../model/returns_period.dart';
 import 'financial_returns_state.dart';
 
 /// Business logic for the financial-returns screen.
@@ -32,6 +34,8 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
       FinancialReturnsLoading(
         selectedCity: state.selectedCity,
         query: state.query,
+        selectedStatus: state.selectedStatus,
+        selectedPeriod: state.selectedPeriod,
       ),
     );
 
@@ -43,6 +47,8 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
             rows: payload.rows,
             selectedCity: state.selectedCity,
             query: state.query,
+            selectedStatus: state.selectedStatus,
+            selectedPeriod: state.selectedPeriod,
           ),
         );
       },
@@ -53,6 +59,8 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
             message: 'تعذّر تحميل العوائد المالية، حاول مرة أخرى.',
             selectedCity: state.selectedCity,
             query: state.query,
+            selectedStatus: state.selectedStatus,
+            selectedPeriod: state.selectedPeriod,
           ),
         );
       },
@@ -68,39 +76,79 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
     emit(_withFilters(selectedCity: city));
   }
 
+  /// Applies the status pill; `null` means every status.
+  void selectStatus(FinancialReturnStatus? status) {
+    if (status == state.selectedStatus) return;
+    emit(_withFilters(selectedStatus: status, statusChanged: true));
+  }
+
+  /// Applies the period pill.
+  void selectPeriod(ReturnsPeriod period) {
+    if (period == state.selectedPeriod) return;
+    emit(_withFilters(selectedPeriod: period));
+  }
+
   /// Applies the phone search (already debounced by the field if needed).
   void search(String value) {
     if (value == state.query) return;
     emit(_withFilters(query: value));
   }
 
-  void clearFilters() => emit(_withFilters(selectedCity: kAllCities, query: ''));
+  void clearFilters() => emit(
+    _withFilters(
+      selectedCity: kAllCities,
+      query: '',
+      selectedStatus: null,
+      statusChanged: true,
+      selectedPeriod: ReturnsPeriod.all,
+    ),
+  );
 
+  /// Returns a copy of the current state with the given filters applied.
+  ///
+  /// [statusChanged] exists because `null` is a real value for the status
+  /// (meaning "all"), so `selectedStatus ?? state.selectedStatus` would make it
+  /// impossible to clear.
   FinancialReturnsState _withFilters({
     String? selectedCity,
     String? query,
+    FinancialReturnStatus? selectedStatus,
+    bool statusChanged = false,
+    ReturnsPeriod? selectedPeriod,
   }) {
     final String city = selectedCity ?? state.selectedCity;
     final String text = query ?? state.query;
+    final FinancialReturnStatus? status = statusChanged
+        ? selectedStatus
+        : state.selectedStatus;
+    final ReturnsPeriod period = selectedPeriod ?? state.selectedPeriod;
 
     return switch (state) {
       FinancialReturnsLoaded loaded => FinancialReturnsLoaded(
         rows: loaded.rows,
         selectedCity: city,
         query: text,
+        selectedStatus: status,
+        selectedPeriod: period,
       ),
       FinancialReturnsLoading() => FinancialReturnsLoading(
         selectedCity: city,
         query: text,
+        selectedStatus: status,
+        selectedPeriod: period,
       ),
       FinancialReturnsFailure failure => FinancialReturnsFailure(
         message: failure.message,
         selectedCity: city,
         query: text,
+        selectedStatus: status,
+        selectedPeriod: period,
       ),
       FinancialReturnsInitial() => FinancialReturnsInitial(
         selectedCity: city,
         query: text,
+        selectedStatus: status,
+        selectedPeriod: period,
       ),
     };
   }
@@ -118,6 +166,8 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
         summaries: current.summaries,
         returns: current.returns,
         selectedCity: current.selectedCity,
+        selectedStatus: current.selectedStatus?.label ?? kAllStatuses,
+        selectedPeriod: current.selectedPeriod.label,
         query: current.query,
       );
     } catch (_) {
