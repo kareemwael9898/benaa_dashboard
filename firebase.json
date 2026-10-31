@@ -1,0 +1,27 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "benaa-dashboard",
+          "appId": "1:806850382622:android:61e62cf56fc6fe5abe570f",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "benaa-dashboard",
+          "configurations": {
+            "android": "1:806850382622:android:61e62cf56fc6fe5abe570f",
+            "ios": "1:806850382622:ios:2b12368f2e50a331be570f",
+            "web": "1:806850382622:web:f6d2bd1f2157015ebe570f"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

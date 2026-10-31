@@ -6,6 +6,7 @@ import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../model/financial_return.dart';
 import '../../model/returns_table_columns.dart';
+import 'status_chip.dart';
 
 /// The returns table: 42pt header row plus 50pt data rows.
 ///
@@ -78,7 +79,7 @@ class _DataRow extends StatelessWidget {
   Widget build(BuildContext context) {
     // Design order is: status, amount, reference, phone, alternate phone.
     final List<Widget> cells = <Widget>[
-      _StatusChip(label: row.statusLabel),
+      StatusChip(status: row.status),
       Text(row.amountLabel, style: AppTextStyles.body16),
       Text(row.reference, style: AppTextStyles.body16),
       // Phone numbers are Latin/numeric: LTR keeps the groups in reading
@@ -142,23 +143,6 @@ class _TableCell extends StatelessWidget {
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 4.h),
-      decoration: BoxDecoration(
-        color: AppColors.green,
-        borderRadius: BorderRadius.circular(8.r),
-      ),
-      child: Text(label, style: AppTextStyles.body16),
-    );
-  }
-}
 
 class _EmptyRow extends StatelessWidget {
   const _EmptyRow();

@@ -1,18 +1,21 @@
-import 'financial_return.dart';
+import 'dart:async';
+
 import 'financial_returns_local_data_source.dart';
 import 'financial_returns_payload.dart';
 import 'financial_returns_remote_data_source.dart';
 
 /// Reads financial returns for the dashboard.
 abstract interface class FinancialReturnsRepository {
-  /// Returns the payload, optionally filtered to one city.
-  Future<FinancialReturnsPayload> fetchReturns({String? cityId});
+  /// Snapshot stream: a cached frame first (if any), then live updates.
+  Stream<FinancialReturnsPayload> watchReturns();
 }
 
-/// Cache-first repository.
+/// Cache-first, then live.
 ///
-/// The unfiltered payload is cached in Hive; city filtering happens in memory
-/// so switching a filter never costs a second network round-trip.
+/// The Hive snapshot paints the table immediately on a cold start; the remote
+/// stream takes over as soon as it emits and overwrites the cache. The cache is
+/// therefore never authoritative for longer than the time Firestore needs to
+/// answer — an admin edit can't get stuck behind a stale TTL.
 class FinancialReturnsRepositoryImpl implements FinancialReturnsRepository {
   FinancialReturnsRepositoryImpl({
     required FinancialReturnsRemoteDataSource remote,
@@ -24,33 +27,20 @@ class FinancialReturnsRepositoryImpl implements FinancialReturnsRepository {
   final FinancialReturnsCache _cache;
 
   @override
-  Future<FinancialReturnsPayload> fetchReturns({String? cityId}) async {
-    final FinancialReturnsPayload payload = await _load();
-
-    if (cityId == null || cityId.isEmpty) {
-      return payload;
-    }
-
-    return FinancialReturnsPayload(
-      summaries: payload.summaries,
-      returns: payload.returns
-          .where((FinancialReturn row) => row.cityId == cityId)
-          .toList(),
-    );
-  }
-
-  Future<FinancialReturnsPayload> _load() async {
+  Stream<FinancialReturnsPayload> watchReturns() async* {
     final Map<String, dynamic>? cached = await _cache.read();
     if (cached != null) {
       try {
-        return FinancialReturnsPayload.fromMap(cached);
+        yield FinancialReturnsPayload.fromMap(cached);
       } catch (_) {
         await _cache.clear();
       }
     }
 
-    final FinancialReturnsPayload payload = await _remote.fetch();
-    await _cache.write(payload.toMap());
-    return payload;
+    await for (final FinancialReturnsPayload payload in _remote.watch()) {
+      // Fire-and-forget: a slow disk must not delay a fresh snapshot.
+      unawaited(_cache.write(payload.toMap()));
+      yield payload;
+    }
   }
 }

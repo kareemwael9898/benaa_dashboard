@@ -11,10 +11,15 @@ class DashboardTopBar extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
+    this.actions = const <Widget>[],
   });
 
   final String title;
   final IconData icon;
+
+  /// Optional trailing controls (e.g. the admin shortcut), drawn at the far
+  /// end of the bar so the title block stays exactly where the design puts it.
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +37,8 @@ class DashboardTopBar extends StatelessWidget {
           Text(title, style: AppTextStyles.screenTitle),
           SizedBox(width: 16.w),
           Icon(icon, size: 28.r, color: AppColors.goldBright),
+          const Spacer(),
+          ...actions,
         ],
       ),
     );

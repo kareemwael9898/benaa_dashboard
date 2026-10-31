@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Security model for the financial-returns dashboard.
+//
+//  • The dashboard itself is public: anyone who can open the screen must be
+//    able to read the returns it renders.
+//  • Only authenticated users listed in `admins/{uid}` may write.
+//  • `admins` is readable by its own member (so the app can tell a signed-in
+//    stranger "you are not an admin") and writable by nobody — grant access
+//    from the console or the Admin SDK only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /returns/{returnId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}

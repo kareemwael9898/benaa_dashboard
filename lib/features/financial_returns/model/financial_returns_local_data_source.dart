@@ -68,3 +68,17 @@ class HiveFinancialReturnsCache implements FinancialReturnsCache {
     await _box.delete(_payloadKey);
   }
 }
+
+/// Non-persistent cache: the mock graph and tests run without Hive.
+class InMemoryFinancialReturnsCache implements FinancialReturnsCache {
+  Map<String, dynamic>? _payload;
+
+  @override
+  Future<Map<String, dynamic>?> read() async => _payload;
+
+  @override
+  Future<void> write(Map<String, dynamic> payload) async => _payload = payload;
+
+  @override
+  Future<void> clear() async => _payload = null;
+}

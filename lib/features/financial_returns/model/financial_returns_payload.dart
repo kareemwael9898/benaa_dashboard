@@ -1,34 +1,28 @@
 import 'package:flutter/foundation.dart';
 
 import 'financial_return.dart';
-import 'financial_summary.dart';
 
 /// The payload the returns screen renders.
+///
+/// Only rows: the KPI tiles are derived from them by
+/// `buildFinancialSummaries`, so there is nothing else to carry or cache.
 @immutable
 class FinancialReturnsPayload {
-  const FinancialReturnsPayload({
-    required this.summaries,
-    required this.returns,
-  });
+  const FinancialReturnsPayload({required this.rows});
 
-  final List<FinancialSummary> summaries;
-  final List<FinancialReturn> returns;
+  final List<FinancialReturn> rows;
 
   Map<String, dynamic> toMap() => <String, dynamic>{
-    'summaries': summaries.map((FinancialSummary s) => s.toMap()).toList(),
-    'returns': returns.map((FinancialReturn r) => r.toMap()).toList(),
+    'returns': rows.map((FinancialReturn row) => row.toMap()).toList(),
   };
 
   factory FinancialReturnsPayload.fromMap(Map<String, dynamic> map) {
-    final List<dynamic> summaries =
-        map['summaries'] as List<dynamic>? ?? <dynamic>[];
-    final List<dynamic> returns = map['returns'] as List<dynamic>? ?? <dynamic>[];
+    final List<dynamic> rows = map['returns'] as List<dynamic>? ?? <dynamic>[];
     return FinancialReturnsPayload(
-      summaries: summaries
-          .map((dynamic e) => FinancialSummary.fromMap(e as Map<String, dynamic>))
-          .toList(),
-      returns: returns
-          .map((dynamic e) => FinancialReturn.fromMap(e as Map<String, dynamic>))
+      rows: rows
+          .map(
+            (dynamic row) => FinancialReturn.fromMap(row as Map<String, dynamic>),
+          )
           .toList(),
     );
   }

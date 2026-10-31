@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../core/utils/date_time_format.dart';
 import 'financial_return.dart';
+import 'financial_return_status.dart';
 import 'financial_summary.dart';
 import 'return_filter_field.dart';
 import 'returns_table_columns.dart';
@@ -32,6 +33,7 @@ class FinancialReturnsPdfBuilder {
   static const PdfColor _gold = PdfColor.fromInt(0xFFE8C15B);
   static const PdfColor _goldInk = PdfColor.fromInt(0xFF8A6B1F);
   static const PdfColor _green = PdfColor.fromInt(0xFF478751);
+  static const PdfColor _red = PdfColor.fromInt(0xFFE8454F);
   static const PdfColor _greenWash = PdfColor.fromInt(0xFFEAF2EC);
   static const PdfColor _border = PdfColor.fromInt(0xFFB3B5B9);
   static const PdfColor _headerBg = PdfColor.fromInt(0xFF2D3037);
@@ -262,7 +264,7 @@ class FinancialReturnsPdfBuilder {
         pw.Container(
           padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: pw.BoxDecoration(
-            color: _green,
+            color: _statusColor(row.status),
             borderRadius: pw.BorderRadius.circular(4),
           ),
           child: pw.Text(
@@ -336,6 +338,13 @@ class FinancialReturnsPdfBuilder {
       ),
     );
   }
+
+  /// Same mapping as the on-screen chip, in print colours.
+  PdfColor _statusColor(FinancialReturnStatus status) => switch (status) {
+    FinancialReturnStatus.active => _green,
+    FinancialReturnStatus.pending => _goldInk,
+    FinancialReturnStatus.suspended => _red,
+  };
 
   pw.TextStyle _style({
     required double size,

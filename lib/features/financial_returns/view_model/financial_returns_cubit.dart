@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,17 +20,37 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
   final FinancialReturnsRepository _repository;
   final FinancialReturnsPdfBuilder _pdfBuilder;
 
-  /// Loads (or reloads) the payload for the current filters.
-  Future<void> load() => _fetch(state.filters, showSpinner: true);
+  StreamSubscription<FinancialReturnsPayload>? _subscription;
 
-  /// Updates one dropdown selection and re-queries.
+  /// Subscribes to the source. Called once on screen mount and again on retry.
+  void load() {
+    unawaited(_subscription?.cancel());
+    emit(FinancialReturnsLoading(filters: state.filters));
+
+    _subscription = _repository.watchReturns().listen(
+      (FinancialReturnsPayload payload) {
+        if (isClosed) return;
+        emit(
+          FinancialReturnsLoaded(filters: state.filters, rows: payload.rows),
+        );
+      },
+      onError: (Object _) {
+        if (isClosed) return;
+        emit(
+          FinancialReturnsFailure(
+            filters: state.filters,
+            message: 'تعذّر تحميل العوائد المالية، حاول مرة أخرى.',
+          ),
+        );
+      },
+    );
+  }
+
+  /// Updates one dropdown selection.
   ///
-  /// When data is already on screen the spinner is skipped, so the KPI panel
-  /// doesn't flash on every filter change.
-  Future<void> selectFilter({
-    required int fieldIndex,
-    required int optionIndex,
-  }) async {
+  /// The subscription is untouched: every row is already in memory, so this is
+  /// a local re-filter rather than a network round-trip.
+  void selectFilter({required int fieldIndex, required int optionIndex}) {
     final List<ReturnFilterField> current = state.filters;
     if (fieldIndex < 0 || fieldIndex >= current.length) return;
     if (current[fieldIndex].selectedIndex == optionIndex) return;
@@ -37,15 +58,24 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
     final List<ReturnFilterField> updated = List<ReturnFilterField>.of(current);
     updated[fieldIndex] = updated[fieldIndex].withIndex(optionIndex);
 
-    await _fetch(updated, showSpinner: state is! FinancialReturnsLoaded);
+    emit(switch (state) {
+      FinancialReturnsLoaded loaded => FinancialReturnsLoaded(
+        filters: updated,
+        rows: loaded.rows,
+      ),
+      FinancialReturnsLoading() => FinancialReturnsLoading(filters: updated),
+      FinancialReturnsFailure failure => FinancialReturnsFailure(
+        filters: updated,
+        message: failure.message,
+      ),
+      FinancialReturnsInitial() => FinancialReturnsInitial(filters: updated),
+    });
   }
 
-  /// Renders the currently displayed data as a PDF.
+  /// Renders the currently displayed rows as a PDF.
   ///
-  /// Returns `null` when there is nothing loaded yet or generation fails; the
-  /// view turns that into a message. Handing the bytes to the OS (share sheet,
-  /// print dialog, browser download) is a view concern, so it stays out of the
-  /// Cubit.
+  /// Returns `null` when there is nothing loaded or generation fails; handing
+  /// the bytes to the OS is a view concern, so it stays out of the Cubit.
   Future<Uint8List?> buildReportPdf() async {
     final FinancialReturnsState current = state;
     if (current is! FinancialReturnsLoaded) return null;
@@ -61,39 +91,9 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
     }
   }
 
-  Future<void> _fetch(
-    List<ReturnFilterField> filters, {
-    required bool showSpinner,
-  }) async {
-    if (showSpinner) {
-      emit(FinancialReturnsLoading(filters: filters));
-    }
-
-    try {
-      final FinancialReturnsPayload payload = await _repository.fetchReturns(
-        cityId: _selectedCity(filters),
-      );
-
-      emit(
-        FinancialReturnsLoaded(
-          filters: filters,
-          summaries: payload.summaries,
-          returns: payload.returns,
-        ),
-      );
-    } catch (_) {
-      emit(
-        FinancialReturnsFailure(
-          filters: filters,
-          message: 'تعذّر تحميل العوائد المالية، حاول مرة أخرى.',
-        ),
-      );
-    }
-  }
-
-  /// City filter drives the query (last dropdown in the design).
-  String? _selectedCity(List<ReturnFilterField> filters) {
-    if (filters.isEmpty) return null;
-    return filters.last.value;
+  @override
+  Future<void> close() async {
+    await _subscription?.cancel();
+    return super.close();
   }
 }

@@ -1,7 +1,9 @@
 # بناء — لوحة التحكم · العوائد المالية
 
 Flutter port of Figma frame `2003:3140` (file `EAJcWejfkDCTeIqAvhdHG1`) — the
-RTL Arabic "financial returns" dashboard screen.
+RTL Arabic "financial returns" dashboard screen — plus the admin page that owns
+its data. Everything is live: a row added in the admin page appears on the
+dashboard (and in its KPI tiles) without a refresh.
 
 ## Run
 
@@ -13,6 +15,23 @@ flutter run -d chrome --web-browser-flag="--window-size=1440,1199"
 The design canvas is 1440 × 1199 (`ScreenUtilInit` in `lib/app.dart`), so the
 web build is the closest pixel match. Android/iOS targets are generated too.
 
+The Firebase config is committed (`lib/firebase_options.dart`), so the app runs
+against the real backend out of the box:
+
+- project `benaa-dashboard`, Firestore in `me-central2`
+- `returns` — public read, admin-only write
+- `admins/{uid}` — the admin allow-list; not writable from the client
+
+Without a backend (offline, or on Linux desktop where `cloud_firestore` has no
+implementation), run on the bundled demo data:
+
+```bash
+flutter run -d chrome --dart-define=USE_MOCK=true
+```
+
+Mock mode accepts any non-empty email/password on the admin page and keeps its
+rows in memory.
+
 ```bash
 flutter analyze
 flutter test
@@ -23,45 +42,108 @@ flutter test
 > calls `ZLibDecoder.decodeLazy` (added in archive 4.1.0) — the two together
 > fail to compile. Drop the pin once `pdf` widens its range.
 
+## Admin page
+
+`/#/admin` (also reachable from `إدارة` in the dashboard's top bar).
+
+Sign-in is Firebase Auth email/password; the account must **also** exist as a
+document in `admins/{uid}`. Both halves are enforced:
+
+- the UI checks `admins/{uid}` after sign-in and signs the session straight back
+  out with `هذا الحساب لا يملك صلاحية إدارة العوائد` when it is missing;
+- `firestore.rules` re-checks the same document on every write, so a client that
+  skips the UI still cannot write.
+
+Creating an admin (one-off, from the console — a client can't grant itself):
+
+1. Firebase console → Authentication → add the user (email/password).
+2. Copy the user's UID, then Firestore → `admins` → new document with that UID
+   as the id (fields `email`, `createdAt` are informational).
+
+> On the Spark plan `identityPlatform:initializeAuth` fails with
+> `BILLING_NOT_ENABLED`; email/password must be enabled once from the console
+> (Authentication → Get started).
+
+The page manages the `returns` collection only — every row is
+`cityId`, `status` (`active` | `pending` | `suspended`), `amount` (number),
+`reference`, `phone`, `alternatePhone`, `createdAt` (server timestamp):
+
+- **إضافة صف** / **تعديل** — validated form (amount ≥ 0, reference, phone);
+  the city list is the same constant the dashboard filters on, so a row can
+  never fall outside the filter.
+- **حذف** — confirmation dialog, then a hard delete.
+- **استيراد بيانات التصميم** — writes the three demo rows (the first mirrors
+  the Figma row exactly) when the collection is empty.
+- Errors from Firestore (`permission-denied`, `unavailable`…) are translated to
+  Arabic snack bars instead of a false success message.
+
 ## Architecture
 
 Feature-first MVVM with Cubit:
 
 ```
 lib/
-├── app.dart                     MaterialApp + RTL locale + Cubit wiring
-├── main.dart                    Hive init, then runApp
+├── app.dart                     MaterialApp + RTL locale + routes + Cubit wiring
+├── main.dart                    Hive init → Firebase → runApp
 ├── core/
-│   ├── constants/               icon mapping, sidebar navigation
+│   ├── config/                  USE_MOCK / Linux detection
+│   ├── constants/               icons, sidebar navigation, routes
+│   ├── di/                      AppDependencies (firebase + mock graphs)
 │   ├── models/                  DashboardNavItem
 │   ├── theme/                   colors, type scale, dimens, ThemeData
-│   ├── utils/                   date/time formatting (clock + PDF)
+│   ├── utils/                   amount, date/time formatting (clock + PDF)
 │   └── widgets/                 shell, sidebar, top bar, clock, brand
-└── features/financial_returns/
-    ├── model/                   entities, filter fields, repository, sources,
-    │                            PDF builder
-    ├── view/                    screen + widgets
-    └── view_model/              Cubit + sealed states
+└── features/
+    ├── financial_returns/
+    │   ├── model/               entity + status enum, filter fields, KPI
+    │   │                        builder, repository, Hive cache, Firestore
+    │   │                        source, PDF builder
+    │   ├── view/                screen + widgets
+    │   └── view_model/          Cubit + sealed states
+    ├── auth/
+    │   ├── model/               admin auth repository (Firebase + mock)
+    │   ├── view/                login form
+    │   └── view_model/          AuthCubit + sealed states
+    └── admin/
+        ├── model/               admin repository (Firestore + mock)
+        ├── view/                gate, screen, table, row form
+        └── view_model/          AdminReturnsCubit + sealed states
 ```
 
 Rules followed:
 
-- **Cubit** for feature state (`Initial → Loading → Loaded | Failure`), all
-  sealed; no `setState` anywhere.
+- **Cubit** for feature state, all sealed (`Initial → Loading → Loaded |
+  Failure`); no `setState` anywhere. Dialog forms own only their text
+  controllers.
 - **`ValueNotifier`** for the sidebar clock — local, high-frequency UI state
   doesn't need a Cubit.
 - **ScreenUtil** for every dimension and font size (`.w`, `.h`, `.r`, `.sp`).
-- **Hive** for caching (no `shared_preferences`).
-- Repository is cache-first; city filtering happens in memory.
+- **Hive** for the cached first frame (no `shared_preferences`).
+- Read and write paths are separate repositories: the dashboard's is read-only,
+  so the public screen can't accidentally gain write capability.
 
 ## Data flow
 
-`ReturnsPageContent` → `FinancialReturnsCubit.selectFilter()` →
-`FinancialReturnsRepositoryImpl.fetchReturns(cityId:)` → Hive cache or
-`MockFinancialReturnsRemoteDataSource` → `FinancialReturnsLoaded` → `BlocBuilder`.
+```
+Firestore `returns` ──▶ FirestoreFinancialReturnsRemoteDataSource.watch()
+                     ──▶ FinancialReturnsRepositoryImpl.watchReturns()
+                          (Hive snapshot first, then live frames)
+                     ──▶ FinancialReturnsCubit ──▶ FinancialReturnsLoaded
+```
 
-Swap `MockFinancialReturnsRemoteDataSource` for a Firebase/Supabase
-implementation of `FinancialReturnsRemoteDataSource` — nothing else changes.
+`FinancialReturnsLoaded` holds *every* row plus the dropdown state; the visible
+subset and the KPI tiles are getters on the state. Changing the city dropdown
+therefore re-filters in memory — no refetch, no loading flash, and the tiles
+always describe exactly the rows on screen:
+
+| Tile | Value |
+|---|---|
+| `إجمالي المبلغ` | sum of `amount` over the filtered rows |
+| `عدد العوائد` | how many rows are filtered in |
+| `العوائد المفعّلة` | how many of those are `active` |
+
+Amounts are stored as numbers and formatted once (`formatAmount`), so a tile can
+never drift from the table beneath it.
 
 ## PDF export / print
 
@@ -73,6 +155,7 @@ report can never disagree with the table.
   build timestamp, active filter chips, the KPI tiles, and a paginated table
   whose header row repeats on every page. Arabic shaping, RTL and the embedded
   font subset all come from the bundled IBM Plex Sans Arabic files.
+- Status chips keep their on-screen colours (green / gold / red) in print.
 - `FinancialReturnsCubit.buildReportPdf()` feeds it `FinancialReturnsLoaded`
   and returns `Uint8List?` — `null` when nothing is loaded or rendering fails.
 - The view owns the OS hand-off: `Printing.sharePdf` (web: a
@@ -87,11 +170,16 @@ the table.
 
 ## Error states
 
-- **Loading**: green spinner skeleton while the first fetch runs; filter changes
-  keep the current data on screen to avoid a flash.
-- **Failure**: message + `إعادة المحاولة` retry button.
+- **Loading**: green spinner while the first frame arrives; filter changes keep
+  the current data on screen to avoid a flash.
+- **Failure**: message + `إعادة المحاولة` retry button (dashboard and admin).
 - **Report generation**: `تعذّر إنشاء التقرير` when the PDF can't be built, and
   `تعذّر فتح التقرير على هذا الجهاز` when the platform can't hand off the file.
+- **Sign-in**: wrong credentials, disabled account, rate limiting and network
+  failures each get their own Arabic message; a signed-in non-admin is signed
+  out with an explicit reason.
+- **Firebase init failure**: falls back to the mock graph and logs why, instead
+  of a black screen.
 
 ## Tests
 
@@ -99,10 +187,14 @@ the table.
 flutter test
 ```
 
-- `financial_returns_cubit_test.dart` — load, filter, failure, plus PDF
-  generation from the loaded state and its two `null` paths.
+- `financial_returns_cubit_test.dart` — load, in-memory city filter, cached
+  first frame then live frame, failure state, plus PDF generation and its two
+  `null` paths.
+- `financial_returns_kpi_test.dart` — sums, active count, empty list, decimals.
 - `financial_returns_pdf_test.dart` — the bytes are a terminated PDF with an
   embedded font, and the empty-state report still renders.
+- `admin_returns_cubit_test.dart` — load, create/delete with success feedback,
+  failure that must not fake a success, and a broken stream.
 
 ## Known placeholders (from the Figma file, mirrored as-is)
 
@@ -110,16 +202,14 @@ flutter test
 |---|---|
 | Filter row | Three identical dropdowns: label `الدولة`, value `الدمام` |
 | Table header | All five columns read `رقم الجوال` |
-| Table row | `____ ريال`, `#/#/#`, phone repeated twice |
-| KPI tiles | Three identical tiles (`10,000 ريال`) |
 | Sidebar | `صلاحيات المستخدم` repeated 5× — collapsed to one |
 | Logo | Mark is drawn as three gold bars; the Figma paths were not exported |
 | Brand font | Cairo ExtraBold is a variable font, weight applied via `fontVariations` |
 
-Each of these lives in a single, commented constant (`kReturnFilterFields`,
-`kReturnsTableHeaders`, `MockFinancialReturnsRemoteDataSource._rows`), so
-replacing the real content is a one-line edit — the table and the PDF share the
-same header constant, so they can't drift apart.
+The four repeated `رقم الجوال` headers are still in the design's constant
+(`kReturnsTableHeaders`) — the admin page doesn't touch headers. The magic row
+(`____ ريال`, `#/#/#`, repeated phone) is now a real record in `returns`; its
+demo copy lives in `kDemoFinancialReturns`.
 
 ## Notes on fidelity
 
@@ -131,3 +221,7 @@ same header constant, so they can't drift apart.
   doesn't reorder them.
 - The sidebar in the frame is 826pt tall (the page is 1199); it is stretched to
   full height here, and its navigation list scrolls.
+- Newest-first ordering is applied in Dart (`newestFirst`), not with
+  `orderBy('createdAt')`: a row written with `serverTimestamp()` has a pending
+  null timestamp in the local snapshot, and an ordered query would hide it until
+  the write round-trips.

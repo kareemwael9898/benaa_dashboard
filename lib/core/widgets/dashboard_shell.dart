@@ -11,11 +11,13 @@ class DashboardShell extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.child,
+    this.actions = const <Widget>[],
   });
 
   final String title;
   final IconData icon;
   final Widget child;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class DashboardShell extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                DashboardTopBar(title: title, icon: icon),
+                DashboardTopBar(title: title, icon: icon, actions: actions),
                 Expanded(child: child),
               ],
             ),

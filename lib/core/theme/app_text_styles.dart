@@ -34,6 +34,17 @@ abstract final class AppTextStyles {
     );
   }
 
+  /// Body/Regular — 14 / 21 (dense admin tables and forms).
+  static TextStyle get body14 => _base(fontSize: 14, weight: FontWeight.w400);
+
+  /// Body/Bold — 14 / 21.
+  static TextStyle get body14Bold =>
+      _base(fontSize: 14, weight: FontWeight.w700);
+
+  /// Body/Regular — 14 / 21, muted.
+  static TextStyle get body14Muted =>
+      _base(fontSize: 14, weight: FontWeight.w400, color: AppColors.textMuted);
+
   /// Body/Regular — 16 / 24.
   static TextStyle get body16 => _base(fontSize: 16, weight: FontWeight.w400);
 

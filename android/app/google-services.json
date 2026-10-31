@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "806850382622",
+    "project_id": "benaa-dashboard",
+    "storage_bucket": "benaa-dashboard.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:806850382622:android:61e62cf56fc6fe5abe570f",
+        "android_client_info": {
+          "package_name": "com.benaa.benaa_dashboard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTn4bBf9BnXp9xLkTVCx8KM_cetjbLR3g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
