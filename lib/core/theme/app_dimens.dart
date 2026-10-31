@@ -35,4 +35,12 @@ abstract final class AppDimens {
   static double get cardRadius => 18.r;
   static double get panelPadding => 16.w;
   static double get sectionGap => 18.h;
+
+  /// Below the wide breakpoint the returns grid scrolls sideways instead of
+  /// squeezing five columns into the window; this is the width it keeps.
+  static double get tableMinWidth => 820.w;
+
+  /// Same idea for the admin grid (status, amount, reference, two phones,
+  /// actions).
+  static double get adminTableMinWidth => 900.w;
 }

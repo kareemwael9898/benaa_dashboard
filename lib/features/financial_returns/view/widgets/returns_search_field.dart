@@ -15,12 +15,17 @@ class ReturnsSearchField extends StatefulWidget {
     super.key,
     required this.value,
     required this.onChanged,
+    this.width,
   });
 
   /// Current query, owned by the Cubit.
   final String value;
 
   final ValueChanged<String> onChanged;
+
+  /// Defaults to the frame's 269pt field; stacked layouts pass
+  /// [double.infinity].
+  final double? width;
 
   @override
   State<ReturnsSearchField> createState() => _ReturnsSearchFieldState();
@@ -58,7 +63,7 @@ class _ReturnsSearchFieldState extends State<ReturnsSearchField> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 269.w,
+      width: widget.width ?? 269.w,
       constraints: BoxConstraints(minHeight: 40.h),
       padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 8.h),
       decoration: BoxDecoration(
@@ -96,11 +101,7 @@ class _ReturnsSearchFieldState extends State<ReturnsSearchField> {
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: BoxConstraints.tightFor(width: 24.r, height: 24.r),
-              icon: Icon(
-                Icons.close,
-                size: 20.r,
-                color: AppColors.textMuted,
-              ),
+              icon: Icon(Icons.close, size: 20.r, color: AppColors.textMuted),
             ),
         ],
       ),

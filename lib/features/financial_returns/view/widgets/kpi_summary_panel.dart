@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/responsive/app_form_factor.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../model/financial_return.dart';
@@ -40,6 +41,8 @@ class KpiSummaryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool stacked = context.isCompactLayout;
+
     return Container(
       padding: EdgeInsets.all(AppDimens.panelPadding),
       decoration: BoxDecoration(
@@ -55,20 +58,41 @@ class KpiSummaryPanel extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppDimens.blockRadius),
               border: Border.all(color: AppColors.green),
             ),
-            child: Row(
-              children: [
-                for (int i = 0; i < summaries.length; i++)
-                  if (i == 0)
-                    Expanded(child: KpiCard(summary: summaries[i]))
-                  else ...[
-                    SizedBox(width: 24.w),
-                    Expanded(child: KpiCard(summary: summaries[i])),
-                  ],
-              ],
-            ),
+            child: stacked
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (int i = 0; i < summaries.length; i++)
+                        Padding(
+                          padding: EdgeInsets.only(
+                            bottom: i == summaries.length - 1 ? 0 : 12.h,
+                          ),
+                          child: KpiCard(summary: summaries[i]),
+                        ),
+                    ],
+                  )
+                : IntrinsicHeight(
+                    // Keeps the three tiles the same height when a label wraps
+                    // on a narrower window.
+                    child: Row(
+                      children: [
+                        for (int i = 0; i < summaries.length; i++)
+                          if (i == 0)
+                            Expanded(child: KpiCard(summary: summaries[i]))
+                          else ...[
+                            SizedBox(width: 24.w),
+                            Expanded(child: KpiCard(summary: summaries[i])),
+                          ],
+                      ],
+                    ),
+                  ),
           ),
           SizedBox(height: AppDimens.sectionGap),
-          ReturnsSearchField(value: query, onChanged: onQueryChanged),
+          ReturnsSearchField(
+            value: query,
+            onChanged: onQueryChanged,
+            width: stacked ? double.infinity : null,
+          ),
           SizedBox(height: AppDimens.sectionGap),
           ReturnsTable(
             returns: returns,

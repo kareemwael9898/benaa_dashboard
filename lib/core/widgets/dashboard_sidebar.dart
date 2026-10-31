@@ -17,16 +17,20 @@ class DashboardSidebar extends StatelessWidget {
     this.items = kDashboardNavItems,
     this.onItemSelected,
     this.onLogout,
+    this.width,
   });
 
   final List<DashboardNavItem> items;
   final ValueChanged<DashboardNavItem>? onItemSelected;
   final VoidCallback? onLogout;
 
+  /// Defaults to the frame's 280pt column; the drawer fills its own width.
+  final double? width;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: AppDimens.sidebarWidth,
+      width: width ?? AppDimens.sidebarWidth,
       color: AppColors.surface,
       padding: EdgeInsets.symmetric(
         horizontal: AppDimens.sidebarHorizontalPadding,

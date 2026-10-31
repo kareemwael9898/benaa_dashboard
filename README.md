@@ -90,6 +90,7 @@ lib/
 │   ├── constants/               icons, sidebar navigation, routes
 │   ├── di/                      AppDependencies (firebase + mock graphs)
 │   ├── models/                  DashboardNavItem
+│   ├── responsive/              form-factor tiers (compact/medium/wide)
 │   ├── theme/                   colors, type scale, dimens, ThemeData
 │   ├── utils/                   amount, date/time formatting (clock + PDF)
 │   └── widgets/                 shell, sidebar, top bar, clock, brand
@@ -117,10 +118,39 @@ Rules followed:
   controllers.
 - **`ValueNotifier`** for the sidebar clock — local, high-frequency UI state
   doesn't need a Cubit.
-- **ScreenUtil** for every dimension and font size (`.w`, `.h`, `.r`, `.sp`).
+- **ScreenUtil** for every dimension and font size (`.w`, `.h`, `.r`, `.sp`),
+  with scaling enabled only at and above the design width — see
+  [Responsive behaviour](#responsive-behaviour).
 - **Hive** for the cached first frame (no `shared_preferences`).
 - Read and write paths are separate repositories: the dashboard's is read-only,
   so the public screen can't accidentally gain write capability.
+
+## Responsive behaviour
+
+The frame is 1440×1199. Below that width ScreenUtil scaling is turned off
+(`enableScaleWH` / `enableScaleText` in `app.dart`), so a design pixel *is* a
+logical pixel: 16sp stays 16px instead of becoming 4.3px on a 390px phone.
+Above 1440 the whole canvas scales as before, so the desktop rendering is
+unchanged. `core/responsive/app_form_factor.dart` picks the composition:
+
+| Tier | Width | Shell | Filters | KPIs | Tables |
+|---|---|---|---|---|---|
+| `wide` | ≥ 1200 | permanent 280pt sidebar | three pills in one row | three tiles across | the frame's grid |
+| `medium` | 900–1199 | permanent sidebar | pills wrap to a second run | three tiles across | same grid, scrolled sideways |
+| `compact` | < 900 | drawer + hamburger | pills and actions stacked full width | tiles stacked | one card per row |
+
+Why 1200: three 269pt pills plus the 280pt sidebar and 48pt page padding need
+~1183pt. Between 900 and 1199 the grid keeps a readable column width (820pt for
+returns, 900pt for admin) and scrolls horizontally rather than squeezing five
+columns into the window. Below 900 a five-column grid cannot be read at all, so
+every row becomes a card with the status and amount on top and the long fields
+underneath. The admin page and the row form follow the same tiers (stacked
+fields, full-width dialog).
+
+`test/responsive_layout_test.dart` pumps the shell, filters, KPI panel and both
+tables at 390×844, 1024×768 and 1440×1199 and asserts the switch, so a new
+fixed width in the `wide` composition fails a test instead of silently
+overflowing on a phone.
 
 ## Data flow
 
@@ -218,6 +248,10 @@ flutter test
   embedded font, and the empty-state report still renders.
 - `admin_returns_cubit_test.dart` — load, create/delete with success feedback,
   failure that must not fake a success, and a broken stream.
+- `app_form_factor_test.dart` — the tier boundaries.
+- `responsive_layout_test.dart` — the shell, filters, KPI panel and both tables
+  at 390 / 1024 / 1440: drawer vs sidebar, stacked vs row, cards vs grid, no
+  overflow exceptions.
 
 ## Known placeholders (from the Figma file, mirrored as-is)
 

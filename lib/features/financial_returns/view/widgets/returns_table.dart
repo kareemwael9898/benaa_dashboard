@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/responsive/app_form_factor.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -8,7 +9,13 @@ import '../../model/financial_return.dart';
 import '../../model/returns_table_columns.dart';
 import 'status_chip.dart';
 
-/// The returns table: 42pt header row plus 50pt data rows.
+/// The returns table.
+///
+/// Three presentations of the same rows:
+/// * wide — the frame's 42pt header plus 50pt rows, five columns;
+/// * medium — the same grid, scrolled horizontally at a readable column width,
+///   because five columns need ~820pt and the window is narrower than that;
+/// * compact — one card per row, since five columns cannot be read on a phone.
 ///
 /// Header labels come from [kReturnsTableHeaders] (shared with the PDF).
 class ReturnsTable extends StatelessWidget {
@@ -29,6 +36,45 @@ class ReturnsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppFormFactor factor = context.formFactor;
+
+    if (factor == AppFormFactor.compact) {
+      return _CardList(
+        returns: returns,
+        emptyMessage: emptyMessage,
+        onClearFilters: onClearFilters,
+      );
+    }
+
+    final Widget grid = _Grid(
+      returns: returns,
+      emptyMessage: emptyMessage,
+      onClearFilters: onClearFilters,
+    );
+
+    if (factor == AppFormFactor.wide) return grid;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(width: AppDimens.tableMinWidth, child: grid),
+    );
+  }
+}
+
+/// Header row plus data rows inside the frame's bordered block.
+class _Grid extends StatelessWidget {
+  const _Grid({
+    required this.returns,
+    required this.emptyMessage,
+    required this.onClearFilters,
+  });
+
+  final List<FinancialReturn> returns;
+  final String emptyMessage;
+  final VoidCallback? onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -40,12 +86,133 @@ class ReturnsTable extends StatelessWidget {
         children: [
           _HeaderRow(labels: kReturnsTableHeaders),
           if (returns.isEmpty)
-            _EmptyRow(
-              message: emptyMessage,
-              onClearFilters: onClearFilters,
-            )
+            _EmptyRow(message: emptyMessage, onClearFilters: onClearFilters)
           else
             for (final FinancialReturn row in returns) _DataRow(row: row),
+        ],
+      ),
+    );
+  }
+}
+
+/// One card per row: status and amount on the first line, the long fields
+/// underneath, so nothing has to be squeezed into a fifth of the screen.
+class _CardList extends StatelessWidget {
+  const _CardList({
+    required this.returns,
+    required this.emptyMessage,
+    required this.onClearFilters,
+  });
+
+  final List<FinancialReturn> returns;
+  final String emptyMessage;
+  final VoidCallback? onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    if (returns.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppDimens.blockRadius),
+          border: Border.all(color: AppColors.border, width: 0.5),
+        ),
+        padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+        child: _EmptyContent(
+          message: emptyMessage,
+          onClearFilters: onClearFilters,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final FinancialReturn row in returns) _CompactRow(row: row),
+      ],
+    );
+  }
+}
+
+class _CompactRow extends StatelessWidget {
+  const _CompactRow({required this.row});
+
+  final FinancialReturn row;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppDimens.blockRadius),
+        border: Border.all(color: AppColors.border, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              StatusChip(status: row.status, compact: true),
+              SizedBox(width: 10.w),
+              // The amount is the headline of the card, but it has to give way
+              // to the chip on narrow phones instead of overflowing.
+              Expanded(
+                child: Text(
+                  row.amountLabel,
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.body18Bold,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          _CompactLine(label: 'المرجع', value: row.reference),
+          _CompactLine(label: 'الجوال', value: row.phone, ltr: true),
+          if (row.alternatePhone != row.phone)
+            _CompactLine(
+              label: 'الجوال البديل',
+              value: row.alternatePhone,
+              ltr: true,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactLine extends StatelessWidget {
+  const _CompactLine({
+    required this.label,
+    required this.value,
+    this.ltr = false,
+  });
+
+  final String label;
+  final String value;
+  final bool ltr;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(top: 2.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92.w,
+            child: Text(label, style: AppTextStyles.body14Muted),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textDirection: ltr ? TextDirection.ltr : null,
+              style: AppTextStyles.body14,
+            ),
+          ),
         ],
       ),
     );
@@ -157,7 +324,6 @@ class _TableCell extends StatelessWidget {
   }
 }
 
-
 class _EmptyRow extends StatelessWidget {
   const _EmptyRow({required this.message, this.onClearFilters});
 
@@ -171,27 +337,45 @@ class _EmptyRow extends StatelessWidget {
       child: Container(
         color: AppColors.surface,
         alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(message, style: AppTextStyles.body16Muted),
-            if (onClearFilters != null) ...[
-              SizedBox(height: 4.h),
-              TextButton(
-                onPressed: onClearFilters,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.gold,
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: Text(
-                  'مسح الفلاتر',
-                  style: AppTextStyles.body14.copyWith(color: AppColors.gold),
-                ),
-              ),
-            ],
-          ],
-        ),
+        child: _EmptyContent(message: message, onClearFilters: onClearFilters),
       ),
+    );
+  }
+}
+
+/// Shared empty-state body for the grid and the card list.
+class _EmptyContent extends StatelessWidget {
+  const _EmptyContent({required this.message, this.onClearFilters});
+
+  final String message;
+  final VoidCallback? onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.body16Muted,
+        ),
+        if (onClearFilters != null) ...[
+          SizedBox(height: 4.h),
+          TextButton(
+            onPressed: onClearFilters,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.gold,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: Text(
+              'مسح الفلاتر',
+              style: AppTextStyles.body14.copyWith(color: AppColors.gold),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

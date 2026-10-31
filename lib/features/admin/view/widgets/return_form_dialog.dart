@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/responsive/app_form_factor.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../financial_returns/model/financial_return.dart';
@@ -45,7 +46,9 @@ class _ReturnFormDialogState extends State<ReturnFormDialog> {
     );
     _reference = TextEditingController(text: existing?.reference ?? '');
     _phone = TextEditingController(text: existing?.phone ?? '');
-    _alternatePhone = TextEditingController(text: existing?.alternatePhone ?? '');
+    _alternatePhone = TextEditingController(
+      text: existing?.alternatePhone ?? '',
+    );
 
     _city = existing?.cityId ?? _cities.first;
     if (!_cities.contains(_city)) _city = _cities.first;
@@ -92,13 +95,16 @@ class _ReturnFormDialogState extends State<ReturnFormDialog> {
   @override
   Widget build(BuildContext context) {
     final bool isEditing = widget.existing != null;
+    final bool compact = context.isCompactLayout;
 
     return Dialog(
-      insetPadding: EdgeInsets.all(24.w),
+      insetPadding: EdgeInsets.all(compact ? 12.w : 24.w),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 560.w),
+        constraints: BoxConstraints(
+          maxWidth: compact ? double.infinity : 560.w,
+        ),
         child: Padding(
-          padding: EdgeInsets.all(24.w),
+          padding: EdgeInsets.all(compact ? 16.w : 24.w),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -111,54 +117,46 @@ class _ReturnFormDialogState extends State<ReturnFormDialog> {
                     style: AppTextStyles.body18Bold,
                   ),
                   SizedBox(height: 18.h),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(
-                        child: _Labeled(
-                          label: 'المدينة',
-                          child: DropdownButtonFormField<String>(
-                            initialValue: _city,
-                            dropdownColor: AppColors.surfaceField,
-                            style: AppTextStyles.body16,
-                            iconEnabledColor: AppColors.gold,
-                            items: <DropdownMenuItem<String>>[
-                              for (final String city in _cities)
-                                DropdownMenuItem<String>(
-                                  value: city,
-                                  child: Text(city),
-                                ),
-                            ],
-                            onChanged: (String? value) {
-                              if (value != null) _city = value;
-                            },
-                          ),
-                        ),
+                  _Pair(
+                    first: _Labeled(
+                      label: 'المدينة',
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _city,
+                        dropdownColor: AppColors.surfaceField,
+                        style: AppTextStyles.body16,
+                        iconEnabledColor: AppColors.gold,
+                        items: <DropdownMenuItem<String>>[
+                          for (final String city in _cities)
+                            DropdownMenuItem<String>(
+                              value: city,
+                              child: Text(city),
+                            ),
+                        ],
+                        onChanged: (String? value) {
+                          if (value != null) _city = value;
+                        },
                       ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: _Labeled(
-                          label: 'الحالة',
-                          child: DropdownButtonFormField<FinancialReturnStatus>(
-                            initialValue: _status,
-                            dropdownColor: AppColors.surfaceField,
-                            style: AppTextStyles.body16,
-                            iconEnabledColor: AppColors.gold,
-                            items: <DropdownMenuItem<FinancialReturnStatus>>[
-                              for (final FinancialReturnStatus status
-                                  in FinancialReturnStatus.values)
-                                DropdownMenuItem<FinancialReturnStatus>(
-                                  value: status,
-                                  child: Text(status.label),
-                                ),
-                            ],
-                            onChanged: (FinancialReturnStatus? value) {
-                              if (value != null) _status = value;
-                            },
-                          ),
-                        ),
+                    ),
+                    second: _Labeled(
+                      label: 'الحالة',
+                      child: DropdownButtonFormField<FinancialReturnStatus>(
+                        initialValue: _status,
+                        dropdownColor: AppColors.surfaceField,
+                        style: AppTextStyles.body16,
+                        iconEnabledColor: AppColors.gold,
+                        items: <DropdownMenuItem<FinancialReturnStatus>>[
+                          for (final FinancialReturnStatus status
+                              in FinancialReturnStatus.values)
+                            DropdownMenuItem<FinancialReturnStatus>(
+                              value: status,
+                              child: Text(status.label),
+                            ),
+                        ],
+                        onChanged: (FinancialReturnStatus? value) {
+                          if (value != null) _status = value;
+                        },
                       ),
-                    ],
+                    ),
                   ),
                   SizedBox(height: 14.h),
                   _Labeled(
@@ -188,50 +186,41 @@ class _ReturnFormDialogState extends State<ReturnFormDialog> {
                       controller: _reference,
                       style: AppTextStyles.body16,
                       decoration: const InputDecoration(hintText: 'RET-1001'),
-                      validator: (String? value) =>
-                          (value ?? '').trim().isEmpty
+                      validator: (String? value) => (value ?? '').trim().isEmpty
                           ? 'أدخل رقم المرجع'
                           : null,
                     ),
                   ),
                   SizedBox(height: 14.h),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Expanded(
-                        child: _Labeled(
-                          label: 'الجوال',
-                          child: TextFormField(
-                            controller: _phone,
-                            keyboardType: TextInputType.phone,
-                            textDirection: TextDirection.ltr,
-                            style: AppTextStyles.body16,
-                            decoration: const InputDecoration(
-                              hintText: '05xxxxxxxx',
-                            ),
-                            validator: (String? value) =>
-                                (value ?? '').trim().length < 6
-                                ? 'أدخل رقم جوال صحيحًا'
-                                : null,
-                          ),
+                  _Pair(
+                    first: _Labeled(
+                      label: 'الجوال',
+                      child: TextFormField(
+                        controller: _phone,
+                        keyboardType: TextInputType.phone,
+                        textDirection: TextDirection.ltr,
+                        style: AppTextStyles.body16,
+                        decoration: const InputDecoration(
+                          hintText: '05xxxxxxxx',
+                        ),
+                        validator: (String? value) =>
+                            (value ?? '').trim().length < 6
+                            ? 'أدخل رقم جوال صحيحًا'
+                            : null,
+                      ),
+                    ),
+                    second: _Labeled(
+                      label: 'الجوال البديل (اختياري)',
+                      child: TextFormField(
+                        controller: _alternatePhone,
+                        keyboardType: TextInputType.phone,
+                        textDirection: TextDirection.ltr,
+                        style: AppTextStyles.body16,
+                        decoration: const InputDecoration(
+                          hintText: '05xxxxxxxx',
                         ),
                       ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: _Labeled(
-                          label: 'الجوال البديل (اختياري)',
-                          child: TextFormField(
-                            controller: _alternatePhone,
-                            keyboardType: TextInputType.phone,
-                            textDirection: TextDirection.ltr,
-                            style: AppTextStyles.body16,
-                            decoration: const InputDecoration(
-                              hintText: '05xxxxxxxx',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                   SizedBox(height: 22.h),
                   Row(
@@ -274,6 +263,38 @@ class _ReturnFormDialogState extends State<ReturnFormDialog> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Two fields side by side on roomy screens, stacked on phones where each one
+/// needs the full width to stay readable.
+class _Pair extends StatelessWidget {
+  const _Pair({required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) {
+    if (context.isCompactLayout) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          first,
+          SizedBox(height: 14.h),
+          second,
+        ],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Expanded(child: first),
+        SizedBox(width: 12.w),
+        Expanded(child: second),
+      ],
     );
   }
 }

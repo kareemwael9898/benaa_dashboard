@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/constants/app_icons.dart';
+import '../../../core/responsive/app_form_factor.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimens.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -73,43 +74,96 @@ class _AdminHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool compact = context.isCompactLayout;
+
+    final Widget title = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Flexible(
+          child: Text(
+            'إدارة العوائد المالية',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.screenTitle,
+          ),
+        ),
+        SizedBox(width: 12.w),
+        Icon(
+          AppIcons.financialReturns,
+          size: 28.r,
+          color: AppColors.goldBright,
+        ),
+      ],
+    );
+
+    final Widget logout = TextButton.icon(
+      onPressed: () => context.read<AuthCubit>().signOut(),
+      style: TextButton.styleFrom(foregroundColor: AppColors.red),
+      icon: Icon(AppIcons.logout, size: 18.r, color: AppColors.red),
+      label: Text(
+        'خروج',
+        style: AppTextStyles.body14.copyWith(color: AppColors.red),
+      ),
+    );
+
     return Container(
-      height: AppDimens.topBarHeight,
+      // Same total height as the dashboard bar when the header fits on one
+      // line; the compact header grows instead of clipping.
+      constraints: BoxConstraints(minHeight: AppDimens.topBarHeight),
       padding: EdgeInsets.symmetric(
         horizontal: AppDimens.topBarHorizontalPadding,
         vertical: AppDimens.topBarVerticalPadding,
       ),
       color: AppColors.surface,
-      child: Row(
-        children: <Widget>[
-          IconButton(
-            tooltip: 'العودة إلى لوحة التحكم',
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const BackButtonIcon(),
-            color: AppColors.goldBright,
-          ),
-          SizedBox(width: 4.w),
-          Text('إدارة العوائد المالية', style: AppTextStyles.screenTitle),
-          SizedBox(width: 12.w),
-          Icon(
-            AppIcons.financialReturns,
-            size: 28.r,
-            color: AppColors.goldBright,
-          ),
-          const Spacer(),
-          Text(email, textDirection: TextDirection.ltr, style: AppTextStyles.body14Muted),
-          SizedBox(width: 12.w),
-          TextButton.icon(
-            onPressed: () => context.read<AuthCubit>().signOut(),
-            style: TextButton.styleFrom(foregroundColor: AppColors.red),
-            icon: Icon(AppIcons.logout, size: 18.r, color: AppColors.red),
-            label: Text(
-              'خروج',
-              style: AppTextStyles.body14.copyWith(color: AppColors.red),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    IconButton(
+                      tooltip: 'العودة إلى لوحة التحكم',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const BackButtonIcon(),
+                      color: AppColors.goldBright,
+                    ),
+                    title,
+                    const Spacer(),
+                    logout,
+                  ],
+                ),
+                Padding(
+                  padding: EdgeInsetsDirectional.only(start: 48.w),
+                  child: Text(
+                    email,
+                    textDirection: TextDirection.ltr,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.body14Muted,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: <Widget>[
+                IconButton(
+                  tooltip: 'العودة إلى لوحة التحكم',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const BackButtonIcon(),
+                  color: AppColors.goldBright,
+                ),
+                SizedBox(width: 4.w),
+                title,
+                const Spacer(),
+                Text(
+                  email,
+                  textDirection: TextDirection.ltr,
+                  style: AppTextStyles.body14Muted,
+                ),
+                SizedBox(width: 12.w),
+                logout,
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -132,9 +186,8 @@ class _AdminBody extends StatelessWidget {
           AdminReturnsFailure(:final String message) => _AdminError(
             message: message,
           ),
-          AdminReturnsLoaded(:final List<FinancialReturn> rows) => _AdminContent(
-            rows: rows,
-          ),
+          AdminReturnsLoaded(:final List<FinancialReturn> rows) =>
+            _AdminContent(rows: rows),
         };
       },
     );
@@ -154,27 +207,45 @@ class _AdminContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12.w,
+          runSpacing: 10.h,
           children: <Widget>[
-            Text('العوائد', style: AppTextStyles.body18Bold),
-            SizedBox(width: 8.w),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 2.h),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceField,
-                borderRadius: BorderRadius.circular(10.r),
-              ),
-              child: Text(
-                '${rows.length}',
-                style: AppTextStyles.body14Bold.copyWith(color: AppColors.gold),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text('العوائد', style: AppTextStyles.body18Bold),
+                SizedBox(width: 8.w),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 2.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceField,
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Text(
+                    '${rows.length}',
+                    style: AppTextStyles.body14Bold.copyWith(
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const Spacer(),
             FilledButton.icon(
               onPressed: () => _openForm(context, null),
               style: _primaryButtonStyle(),
               icon: Icon(Icons.add, size: 20.r),
-              label: Text('إضافة صف', style: AppTextStyles.body14Bold.copyWith(color: AppColors.pureBlack)),
+              label: Text(
+                'إضافة صف',
+                style: AppTextStyles.body14Bold.copyWith(
+                  color: AppColors.pureBlack,
+                ),
+              ),
             ),
           ],
         ),
@@ -186,7 +257,8 @@ class _AdminContent extends StatelessWidget {
                   rows: rows,
                   busy: busy,
                   onEdit: (FinancialReturn row) => _openForm(context, row),
-                  onDelete: (FinancialReturn row) => _confirmDelete(context, row),
+                  onDelete: (FinancialReturn row) =>
+                      _confirmDelete(context, row),
                 ),
         ),
       ],
@@ -200,7 +272,10 @@ class _AdminContent extends StatelessWidget {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
   );
 
-  Future<void> _openForm(BuildContext context, FinancialReturn? existing) async {
+  Future<void> _openForm(
+    BuildContext context,
+    FinancialReturn? existing,
+  ) async {
     final AdminReturnsCubit cubit = context.read<AdminReturnsCubit>();
 
     final FinancialReturn? result = await showDialog<FinancialReturn>(
@@ -216,10 +291,7 @@ class _AdminContent extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    FinancialReturn row,
-  ) async {
+  Future<void> _confirmDelete(BuildContext context, FinancialReturn row) async {
     final AdminReturnsCubit cubit = context.read<AdminReturnsCubit>();
 
     final bool? confirmed = await showDialog<bool>(
@@ -314,7 +386,11 @@ class _AdminError extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Text(message, style: AppTextStyles.body16, textAlign: TextAlign.center),
+          Text(
+            message,
+            style: AppTextStyles.body16,
+            textAlign: TextAlign.center,
+          ),
           SizedBox(height: 16.h),
           TextButton(
             onPressed: () => context.read<AdminReturnsCubit>().load(),

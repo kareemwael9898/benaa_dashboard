@@ -15,6 +15,7 @@ class ReturnsFilterFieldView extends StatelessWidget {
     required this.options,
     required this.value,
     required this.onSelected,
+    this.width,
   });
 
   final String label;
@@ -22,10 +23,13 @@ class ReturnsFilterFieldView extends StatelessWidget {
   final String value;
   final ValueChanged<String> onSelected;
 
+  /// Defaults to the frame's 269pt pill; stacked layouts pass [double.infinity].
+  final double? width;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: AppDimens.filterFieldWidth,
+      width: width ?? AppDimens.filterFieldWidth,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

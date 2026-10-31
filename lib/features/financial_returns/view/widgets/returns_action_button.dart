@@ -14,6 +14,7 @@ class ReturnsActionButton extends StatelessWidget {
     required this.icon,
     required this.background,
     required this.onPressed,
+    this.width,
   });
 
   final String label;
@@ -21,10 +22,14 @@ class ReturnsActionButton extends StatelessWidget {
   final Color background;
   final VoidCallback onPressed;
 
+  /// Defaults to the frame's 269pt button; stacked layouts pass
+  /// [double.infinity].
+  final double? width;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: AppDimens.actionButtonWidth,
+      width: width ?? AppDimens.actionButtonWidth,
       child: Material(
         color: background,
         borderRadius: BorderRadius.circular(AppDimens.blockRadius),
