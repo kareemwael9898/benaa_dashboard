@@ -279,7 +279,11 @@ flutter test
 ## Deployment
 
 The web build is hosted on Firebase Hosting at
-**https://benaa-dashboard.web.app** (project `benaa-dashboard`, default site).
+**https://benaa.web.app** (project `benaa-dashboard`, site `benaa`). The
+`hosting.site` key in `firebase.json` is what points deploys at that site;
+`benaa.web.app` is also listed under Firebase Auth → Settings → Authorized
+domains, without which the admin sign-in would fail with
+`auth/unauthorized-domain`.
 
 ```bash
 flutter build web --release
