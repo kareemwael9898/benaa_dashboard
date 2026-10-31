@@ -1,12 +1,11 @@
 {
-    "name": "benaa_dashboard",
-    "short_name": "benaa_dashboard",
+    "name": "بناء — العوائد المالية",
+    "short_name": "بناء",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "لوحة تحكم بناء — العوائد المالية",
     "prefer_related_applications": false,
     "icons": [
         {

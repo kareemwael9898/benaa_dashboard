@@ -276,6 +276,28 @@ flutter test
   at 390 / 1024 / 1440: drawer vs sidebar, stacked vs row, cards vs grid, no
   overflow exceptions.
 
+## Deployment
+
+The web build is hosted on Firebase Hosting at
+**https://benaa-dashboard.web.app** (project `benaa-dashboard`, default site).
+
+```bash
+flutter build web --release
+firebase deploy --only hosting            # live
+firebase hosting:channel:deploy preview --expires 7d   # throwaway URL to review first
+firebase hosting:rollback                 # back to the previous release
+```
+
+- `firebase.json` publishes `build/web` and sets the cache policy that keeps
+  updates honest: `/`, `index.html`, `main.dart.js`, `flutter_bootstrap.js`,
+  `flutter_service_worker.js` and `manifest.json` are `no-cache`, so a new
+  deploy is picked up on the next load; `/assets/**` is cached for a week.
+- The site is `noindex` (meta tag + `robots.txt`) — it is an internal dashboard,
+  not a landing page.
+- `flutter build web` never sets `USE_MOCK`, so the deployed app talks to the
+  real Firestore; the dashboard needs no sign-in because `firestore.rules`
+  allows public reads on `returns`, while writes require an `admins/{uid}` row.
+
 ## Known placeholders (from the Figma file)
 
 | Where | What the file contains |
