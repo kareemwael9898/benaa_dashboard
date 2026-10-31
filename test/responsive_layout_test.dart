@@ -8,6 +8,7 @@ import 'package:benaa_dashboard/features/financial_returns/model/financial_retur
 import 'package:benaa_dashboard/features/financial_returns/model/financial_summary.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/returns_filters.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/returns_period.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/returns_table_columns.dart';
 import 'package:benaa_dashboard/features/financial_returns/view/widgets/kpi_card.dart';
 import 'package:benaa_dashboard/features/financial_returns/view/widgets/kpi_summary_panel.dart';
 import 'package:benaa_dashboard/features/financial_returns/view/widgets/returns_filter_field.dart';
@@ -90,6 +91,15 @@ Future<void> _pumpAt(
     ),
   );
   await tester.pump();
+}
+
+/// Each column is labelled with its own field, once — five identical headers
+/// (the design placeholder) would fail here.
+void _expectDistinctHeaders() {
+  expect(kReturnsTableHeaders.toSet(), hasLength(5), reason: 'no repeats');
+  for (final String header in kReturnsTableHeaders) {
+    expect(find.text(header), findsOneWidget, reason: header);
+  }
 }
 
 Widget _filters() => ReturnsFiltersSection(
@@ -204,8 +214,12 @@ void main() {
     testWidgets('becomes cards on a phone', (WidgetTester tester) async {
       await _pumpAt(tester, _phone, const ReturnsTable(returns: _rows));
 
-      // Column headers only exist in the grid.
-      expect(find.text('رقم الجوال'), findsNothing);
+      // Column headers only exist in the grid; the card shows field labels
+      // (المرجع, الجوال, الجوال البديل) instead.
+      for (final String header in <String>['الحالة', 'المبلغ']) {
+        expect(find.text(header), findsNothing, reason: header);
+      }
+      expect(find.text('المرجع'), findsNWidgets(_rows.length));
       expect(find.text('RET-1001'), findsOneWidget);
       expect(find.text('+966 50 123 4567'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -214,14 +228,14 @@ void main() {
     testWidgets('keeps five columns on a desktop', (WidgetTester tester) async {
       await _pumpAt(tester, _desktop, const ReturnsTable(returns: _rows));
 
-      expect(find.text('رقم الجوال'), findsNWidgets(5));
+      _expectDistinctHeaders();
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('keeps the grid on a tablet', (WidgetTester tester) async {
       await _pumpAt(tester, _tablet, const ReturnsTable(returns: _rows));
 
-      expect(find.text('رقم الجوال'), findsNWidgets(5));
+      _expectDistinctHeaders();
       final Finder scroller = find.byWidgetPredicate(
         (Widget widget) =>
             widget is SingleChildScrollView &&

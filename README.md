@@ -276,23 +276,24 @@ flutter test
   at 390 / 1024 / 1440: drawer vs sidebar, stacked vs row, cards vs grid, no
   overflow exceptions.
 
-## Known placeholders (from the Figma file, mirrored as-is)
+## Known placeholders (from the Figma file)
 
 | Where | What the file contains |
 |---|---|
-| Filter row | Three identical dropdowns — kept as three real filters instead: `المدينة`, `الحالة`, `الفترة` |
-| Table header | All five columns read `رقم الجوال` |
+| Filter row | Three identical dropdowns — mapped to three real filters: `المدينة`, `الحالة`, `الفترة` |
+| Table header | All five columns read `رقم الجوال` — replaced by the five real field names |
 | Sidebar | `صلاحيات المستخدم` repeated 5× — collapsed to one |
 | Logo | Mark is drawn as three gold bars; the Figma paths were not exported |
 | Brand font | Cairo ExtraBold is a variable font, weight applied via `fontVariations` |
 
-The filter row no longer repeats one dropdown: the file drew the same component
-three times with no second or third field, so the row was mapped to city, status
-and period — the three columns the table already shows. The four repeated
-`رقم الجوال` headers are still in the design's constant
-(`kReturnsTableHeaders`) — the admin page doesn't touch headers. The magic row
-(`____ ريال`, `#/#/#`, repeated phone) is now a real record in `returns`; its
-demo copy lives in `kDemoFinancialReturns`.
+Two of those placeholders are resolved in code. The filter row no longer
+repeats one dropdown: the file drew the same component three times with no
+second or third field, so the row was mapped to city, status and period. And the
+header row no longer repeats `رقم الجوال`: `kReturnsTableHeaders` names the five
+fields it actually labels (`الحالة`, `المبلغ`, `المرجع`, `الجوال`,
+`الجوال البديل`), shared with the PDF and worded exactly like the admin table.
+The magic row (`____ ريال`, `#/#/#`, repeated phone) is now a real record in
+`returns`; its demo copy lives in `kDemoFinancialReturns`.
 
 ## Notes on fidelity
 
