@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The release build talks to Firestore and Firebase Auth. The Firebase
+         libraries contribute this permission through manifest merging, but it
+         is declared here so the requirement is visible and cannot be lost with
+         a dependency change. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="benaa_dashboard"
         android:name="${applicationName}"
