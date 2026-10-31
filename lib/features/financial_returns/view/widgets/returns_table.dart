@@ -5,24 +5,15 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../model/financial_return.dart';
+import '../../model/returns_table_columns.dart';
 
 /// The returns table: 42pt header row plus 50pt data rows.
 ///
-/// NOTE: all five header cells read "رقم الجوال" in the Figma file — they are
-/// placeholders in the source. They are mirrored as-is; edit [_headerLabels]
-/// once the real column names land.
+/// Header labels come from [kReturnsTableHeaders] (shared with the PDF).
 class ReturnsTable extends StatelessWidget {
   const ReturnsTable({super.key, required this.returns});
 
   final List<FinancialReturn> returns;
-
-  static const List<String> _headerLabels = <String>[
-    'رقم الجوال',
-    'رقم الجوال',
-    'رقم الجوال',
-    'رقم الجوال',
-    'رقم الجوال',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +26,7 @@ class ReturnsTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _HeaderRow(labels: _headerLabels),
+          _HeaderRow(labels: kReturnsTableHeaders),
           if (returns.isEmpty)
             const _EmptyRow()
           else

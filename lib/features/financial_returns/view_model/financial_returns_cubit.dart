@@ -1,15 +1,23 @@
+import 'dart:typed_data';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../model/financial_returns_payload.dart';
+import '../model/financial_returns_pdf_builder.dart';
 import '../model/financial_returns_repository.dart';
 import '../model/return_filter_field.dart';
 import 'financial_returns_state.dart';
 
 /// Business logic for the financial-returns screen.
 class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
-  FinancialReturnsCubit(this._repository) : super(const FinancialReturnsInitial());
+  FinancialReturnsCubit(
+    this._repository, {
+    FinancialReturnsPdfBuilder pdfBuilder = const FinancialReturnsPdfBuilder(),
+  }) : _pdfBuilder = pdfBuilder,
+       super(const FinancialReturnsInitial());
 
   final FinancialReturnsRepository _repository;
+  final FinancialReturnsPdfBuilder _pdfBuilder;
 
   /// Loads (or reloads) the payload for the current filters.
   Future<void> load() => _fetch(state.filters, showSpinner: true);
@@ -32,16 +40,25 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
     await _fetch(updated, showSpinner: state is! FinancialReturnsLoaded);
   }
 
-  /// Placeholder for the print action in the design.
-  // TODO(backend): call the report/printing endpoint.
-  Future<void> printReport() async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-  }
+  /// Renders the currently displayed data as a PDF.
+  ///
+  /// Returns `null` when there is nothing loaded yet or generation fails; the
+  /// view turns that into a message. Handing the bytes to the OS (share sheet,
+  /// print dialog, browser download) is a view concern, so it stays out of the
+  /// Cubit.
+  Future<Uint8List?> buildReportPdf() async {
+    final FinancialReturnsState current = state;
+    if (current is! FinancialReturnsLoaded) return null;
 
-  /// Placeholder for the PDF export action in the design.
-  // TODO(backend): request the PDF export and hand the file to the platform.
-  Future<void> exportPdf() async {
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    try {
+      return await _pdfBuilder.build(
+        summaries: current.summaries,
+        returns: current.returns,
+        filters: current.filters,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _fetch(

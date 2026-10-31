@@ -24,6 +24,14 @@ dependencies:
   # Local storage / caching only (never shared_preferences)
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  # PDF report generation + OS hand-off (share sheet / print / download)
+  pdf: ^3.12.0
+  printing: ^5.14.3
+
+  # Pinned: `pdf` requires archive <4.1.0, and image 4.11.0 is the first
+  # release that calls ZLibDecoder.decodeLazy (added in archive 4.1.0), which
+  # breaks the compile. Lift this once pdf widens its archive constraint.
+  image: ">=4.10.1 <4.11.0"
 
 dev_dependencies:
   flutter_test:

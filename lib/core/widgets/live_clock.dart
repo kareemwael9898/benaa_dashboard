@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../theme/app_text_styles.dart';
+import '../utils/date_time_format.dart';
 
 /// Live date + time block in the sidebar.
 ///
@@ -24,16 +25,6 @@ class _LiveClockState extends State<LiveClock> {
   late final ValueNotifier<DateTime> _now;
   Timer? _ticker;
 
-  static const List<String> _weekdays = <String>[
-    'الاثنين',
-    'الثلاثاء',
-    'الأربعاء',
-    'الخميس',
-    'الجمعة',
-    'السبت',
-    'الأحد',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -50,19 +41,6 @@ class _LiveClockState extends State<LiveClock> {
     super.dispose();
   }
 
-  static String _two(int value) => value.toString().padLeft(2, '0');
-
-  String _formatDate(DateTime value) =>
-      '${_weekdays[value.weekday - 1]} ${_two(value.day)} / '
-      '${_two(value.month)} / ${value.year}';
-
-  String _formatTime(DateTime value) {
-    final int hour12 = value.hour % 12 == 0 ? 12 : value.hour % 12;
-    final String suffix = value.hour < 12 ? 'am' : 'pm';
-    return '${_two(hour12)} : ${_two(value.minute)} : ${_two(value.second)} '
-        '$suffix';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -71,7 +49,7 @@ class _LiveClockState extends State<LiveClock> {
         ValueListenableBuilder<DateTime>(
           valueListenable: _now,
           builder: (context, value, _) => Text(
-            _formatDate(value),
+            DateTimeFormat.arabicDate(value),
             textAlign: TextAlign.center,
             style: AppTextStyles.body18Bold,
           ),
@@ -80,7 +58,7 @@ class _LiveClockState extends State<LiveClock> {
         ValueListenableBuilder<DateTime>(
           valueListenable: _now,
           builder: (context, value, _) => Text(
-            _formatTime(value),
+            DateTimeFormat.clockTime(value),
             // The clock is a Latin/numeric string: keeping it LTR stops bidi
             // from moving the "pm" suffix and reversing the segments.
             textDirection: TextDirection.ltr,

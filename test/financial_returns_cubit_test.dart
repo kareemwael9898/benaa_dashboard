@@ -1,7 +1,13 @@
+import 'dart:typed_data';
+
+import 'package:benaa_dashboard/features/financial_returns/model/financial_return.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_local_data_source.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_payload.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_pdf_builder.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_remote_data_source.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_repository.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/financial_summary.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/return_filter_field.dart';
 import 'package:benaa_dashboard/features/financial_returns/view_model/financial_returns_cubit.dart';
 import 'package:benaa_dashboard/features/financial_returns/view_model/financial_returns_state.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +27,9 @@ class _FakeCache implements FinancialReturnsCache {
 }
 
 void main() {
+  // buildReportPdf loads the bundled fonts through rootBundle.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late _FakeCache cache;
   late FinancialReturnsCubit cubit;
 
@@ -79,6 +88,47 @@ void main() {
 
     expect(failing.state, isA<FinancialReturnsFailure>());
   });
+
+  test('buildReportPdf renders the data currently on screen', () async {
+    await cubit.load();
+
+    final Uint8List? bytes = await cubit.buildReportPdf();
+
+    expect(bytes, isNotNull);
+    expect(String.fromCharCodes(bytes!.take(5)), '%PDF-');
+  });
+
+  test('buildReportPdf returns null before anything is loaded', () async {
+    expect(await cubit.buildReportPdf(), isNull);
+  });
+
+  test('buildReportPdf returns null when rendering fails', () async {
+    final throwing = _ThrowingPdfBuilder();
+    final failingCubit = FinancialReturnsCubit(
+      FinancialReturnsRepositoryImpl(
+        remote: MockFinancialReturnsRemoteDataSource(latency: Duration.zero),
+        cache: _FakeCache(),
+      ),
+      pdfBuilder: throwing,
+    );
+    addTearDown(failingCubit.close);
+
+    await failingCubit.load();
+
+    expect(await failingCubit.buildReportPdf(), isNull);
+  });
+}
+
+class _ThrowingPdfBuilder extends FinancialReturnsPdfBuilder {
+  @override
+  Future<Uint8List> build({
+    required List<FinancialSummary> summaries,
+    required List<FinancialReturn> returns,
+    required List<ReturnFilterField> filters,
+    DateTime? generatedAt,
+  }) async {
+    throw StateError('render failed');
+  }
 }
 
 class _ThrowingRemote implements FinancialReturnsRemoteDataSource {

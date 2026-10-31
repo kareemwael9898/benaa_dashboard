@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:printing/printing.dart';
 
 import '../../../core/theme/app_dimens.dart';
 import '../view_model/financial_returns_cubit.dart';
@@ -12,6 +15,8 @@ class ReturnsPageContent extends StatelessWidget {
   const ReturnsPageContent({super.key, required this.state});
 
   final FinancialReturnsLoaded state;
+
+  static const String _reportFileName = 'benaa-financial-returns.pdf';
 
   @override
   Widget build(BuildContext context) {
@@ -35,16 +40,8 @@ class ReturnsPageContent extends StatelessWidget {
                 optionIndex: optionIndex,
               );
             },
-            onPrint: () => _runAction(
-              context,
-              cubit.printReport,
-              'تم إرسال أمر الطباعة',
-            ),
-            onExportPdf: () => _runAction(
-              context,
-              cubit.exportPdf,
-              'تم تنزيل ملف PDF',
-            ),
+            onPrint: () => _handOffReport(context, print: true),
+            onExportPdf: () => _handOffReport(context, print: false),
           ),
           SizedBox(height: AppDimens.pageGap),
           KpiSummaryPanel(
@@ -56,20 +53,41 @@ class ReturnsPageContent extends StatelessWidget {
     );
   }
 
-  /// Awaits a cubit action then confirms it with a snack bar.
-  Future<void> _runAction(
-    BuildContext context,
-    Future<void> Function() action,
-    String confirmation,
-  ) async {
-    await action();
+  /// Builds the PDF from the data on screen, then either opens the system print
+  /// dialog or hands the file to the share/download pipeline.
+  Future<void> _handOffReport(
+    BuildContext context, {
+    required bool print,
+  }) async {
+    final FinancialReturnsCubit cubit = context.read<FinancialReturnsCubit>();
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+    final Uint8List? bytes = await cubit.buildReportPdf();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(confirmation),
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppDimens.pageGap),
-      ),
-    );
+
+    if (bytes == null) {
+      messenger.showSnackBar(_notice('تعذّر إنشاء التقرير، حاول مرة أخرى.'));
+      return;
+    }
+
+    try {
+      if (print) {
+        await Printing.layoutPdf(
+          name: _reportFileName,
+          onLayout: (_) async => bytes,
+        );
+      } else {
+        await Printing.sharePdf(bytes: bytes, filename: _reportFileName);
+        messenger.showSnackBar(_notice('تم تنزيل التقرير'));
+      }
+    } catch (_) {
+      messenger.showSnackBar(_notice('تعذّر فتح التقرير على هذا الجهاز.'));
+    }
   }
+
+  SnackBar _notice(String message) => SnackBar(
+    content: Text(message),
+    behavior: SnackBarBehavior.floating,
+    margin: EdgeInsets.all(AppDimens.pageGap),
+  );
 }
