@@ -1,3 +1,4 @@
+import 'package:benaa_dashboard/core/responsive/app_form_factor.dart';
 import 'package:benaa_dashboard/core/theme/app_theme.dart';
 import 'package:benaa_dashboard/core/widgets/dashboard_shell.dart';
 import 'package:benaa_dashboard/features/admin/view/widgets/admin_returns_table.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 const Size _phone = Size(390, 844);
 const Size _tablet = Size(1024, 768);
+const Size _landscapePhone = Size(844, 390);
 const Size _desktop = Size(1440, 1199);
 
 const List<FinancialReturn> _rows = <FinancialReturn>[
@@ -42,7 +44,7 @@ const List<FinancialReturn> _rows = <FinancialReturn>[
 ];
 
 /// Pumps [child] at [size] with ScreenUtil set up exactly like the app: 1:1
-/// below 1440, scaled above it.
+/// below the desktop breakpoint, scaled by `width / 1440` from it up.
 ///
 /// [scrollable] wraps the child in the vertical scroll view the real pages use;
 /// screens that own a `ListView` (the shell, the admin list) pass `false` so
@@ -63,8 +65,8 @@ Future<void> _pumpAt(
       child: ScreenUtilInit(
         designSize: const Size(1440, 1199),
         splitScreenMode: true,
-        enableScaleWH: () => false,
-        enableScaleText: () => false,
+        enableScaleWH: () => size.width >= AppBreakpoints.desktopMin,
+        enableScaleText: () => size.width >= AppBreakpoints.desktopMin,
         builder: (BuildContext context, Widget? _) => MaterialApp(
           theme: AppTheme.dark,
           locale: const Locale('ar'),
@@ -121,7 +123,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('wrap instead of shrinking on a tablet', (
+    testWidgets('keep the frame row on a tablet, scaled', (
       WidgetTester tester,
     ) async {
       await _pumpAt(tester, _tablet, _filters());
@@ -129,7 +131,29 @@ void main() {
       final Size pill = tester.getSize(
         find.byType(ReturnsFilterFieldView).first,
       );
-      expect(pill.width, closeTo(269, 1), reason: 'frame width, not stretched');
+      // 900+ gets the frame back, scaled by width / 1440 like it always was.
+      expect(pill.width, closeTo(269 * _tablet.width / 1440, 1));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('share one row on a landscape phone', (
+      WidgetTester tester,
+    ) async {
+      await _pumpAt(tester, _landscapePhone, _filters());
+
+      final Set<double> tops = <double>{
+        for (final Element element
+            in find.byType(ReturnsFilterFieldView).evaluate())
+          tester.getTopLeft(find.byWidget(element.widget)).dy,
+      };
+      expect(tops, hasLength(1), reason: 'stacking fills a landscape screen');
+      // Two 12pt gaps shared between three equal pills.
+      final double expected =
+          (_landscapePhone.width - 48 - 24) / kFilterPillCount;
+      expect(
+        tester.getSize(find.byType(ReturnsFilterFieldView).first).width,
+        closeTo(expected, 1),
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -164,7 +188,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('scrolls sideways on a tablet', (WidgetTester tester) async {
+    testWidgets('keeps the grid on a tablet', (WidgetTester tester) async {
       await _pumpAt(tester, _tablet, const ReturnsTable(returns: _rows));
 
       expect(find.text('رقم الجوال'), findsNWidgets(5));
@@ -173,7 +197,7 @@ void main() {
             widget is SingleChildScrollView &&
             widget.scrollDirection == Axis.horizontal,
       );
-      expect(scroller, findsOneWidget);
+      expect(scroller, findsNothing);
       expect(tester.takeException(), isNull);
     });
   });
@@ -185,6 +209,17 @@ void main() {
       final double first = tester.getTopLeft(find.byType(KpiCard).first).dy;
       final double second = tester.getTopLeft(find.byType(KpiCard).at(1)).dy;
       expect(second, greaterThan(first));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('keeps them side by side on a landscape phone', (
+      WidgetTester tester,
+    ) async {
+      await _pumpAt(tester, _landscapePhone, _panel());
+
+      final double first = tester.getTopLeft(find.byType(KpiCard).first).dy;
+      final double second = tester.getTopLeft(find.byType(KpiCard).at(1)).dy;
+      expect(second, equals(first));
       expect(tester.takeException(), isNull);
     });
 
@@ -226,6 +261,25 @@ void main() {
       expect(find.byType(Drawer), findsOneWidget);
       // The navigation lives inside the drawer at this width.
       expect(find.text('لوحة التحكم'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('keeps the sidebar at the breakpoint', (
+      WidgetTester tester,
+    ) async {
+      await _pumpAt(
+        tester,
+        _tablet,
+        const DashboardShell(
+          title: 'العوائد المالية',
+          icon: Icons.emoji_events_outlined,
+          child: SizedBox.shrink(),
+        ),
+        scrollable: false,
+      );
+
+      expect(find.byIcon(Icons.menu), findsNothing);
+      expect(find.text('لوحة التحكم'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

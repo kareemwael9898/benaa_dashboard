@@ -41,7 +41,10 @@ class KpiSummaryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool stacked = context.isCompactLayout;
+    // Stacked tiles need vertical room; on a landscape handset they would push
+    // the table off-screen, so they share a row instead.
+    final bool stacked =
+        context.isCompactLayout && MediaQuery.sizeOf(context).width < 600;
 
     return Container(
       padding: EdgeInsets.all(AppDimens.panelPadding),

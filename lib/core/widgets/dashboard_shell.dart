@@ -7,7 +7,7 @@ import 'dashboard_top_bar.dart';
 
 /// App shell: sidebar on the right (RTL), content column on the left.
 ///
-/// Under [AppBreakpoints.mediumMin] the sidebar moves into a drawer and the
+/// Under [AppBreakpoints.desktopMin] the sidebar moves into a drawer and the
 /// content takes the full width — a permanent 280pt sidebar would eat most of a
 /// phone screen.
 class DashboardShell extends StatelessWidget {

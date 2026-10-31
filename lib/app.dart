@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'core/constants/app_routes.dart';
 import 'core/di/app_dependencies.dart';
+import 'core/responsive/app_form_factor.dart';
 import 'core/theme/app_dimens.dart';
 import 'core/theme/app_theme.dart';
 import 'features/admin/model/admin_returns_repository.dart';
@@ -28,16 +29,16 @@ class BenaaDashboardApp extends StatelessWidget {
       designSize: const Size(AppDimens.designWidth, AppDimens.designHeight),
       minTextAdapt: false,
       splitScreenMode: true,
-      // 1:1 below the design width, scaled above it.
+      // Scaled canvas from the desktop breakpoint up (exactly as before), 1:1
+      // below it.
       //
       // Scaling the 1440pt canvas down to a phone multiplied every font size by
       // the width ratio (16sp came out at 4.3px on a 390px screen), which made
-      // the portrait UI a legible-for-nobody miniature. Keeping design pixels as
-      // logical pixels below 1440 means the compact/medium compositions in
-      // `core/responsive` are laid out in real pixels, and the wide composition
-      // still scales up on large monitors.
-      enableScaleWH: _isAtLeastDesignWidth,
-      enableScaleText: _isAtLeastDesignWidth,
+      // the portrait UI a legible-for-nobody miniature. Under the breakpoint the
+      // compact composition in `core/responsive` is laid out in real pixels
+      // instead; from it up the frame keeps its tuned proportions.
+      enableScaleWH: _shouldScaleCanvas,
+      enableScaleText: _shouldScaleCanvas,
       builder: (BuildContext context, Widget? child) {
         return RepositoryProvider<AdminReturnsRepository>.value(
           value: dependencies.adminReturns,
@@ -80,5 +81,5 @@ class BenaaDashboardApp extends StatelessWidget {
 
 /// ScreenUtil calls this on every `.w` / `.h` / `.sp` read, so it tracks window
 /// resizes through the package's own rebuild path.
-bool _isAtLeastDesignWidth() =>
-    ScreenUtil().screenWidth >= AppDimens.designWidth;
+bool _shouldScaleCanvas() =>
+    ScreenUtil().screenWidth >= AppBreakpoints.desktopMin;

@@ -119,7 +119,7 @@ Rules followed:
 - **`ValueNotifier`** for the sidebar clock — local, high-frequency UI state
   doesn't need a Cubit.
 - **ScreenUtil** for every dimension and font size (`.w`, `.h`, `.r`, `.sp`),
-  with scaling enabled only at and above the design width — see
+  with scaling enabled from the 900pt desktop breakpoint up — see
   [Responsive behaviour](#responsive-behaviour).
 - **Hive** for the cached first frame (no `shared_preferences`).
 - Read and write paths are separate repositories: the dashboard's is read-only,
@@ -127,29 +127,33 @@ Rules followed:
 
 ## Responsive behaviour
 
-The frame is 1440×1199. Below that width ScreenUtil scaling is turned off
-(`enableScaleWH` / `enableScaleText` in `app.dart`), so a design pixel *is* a
-logical pixel: 16sp stays 16px instead of becoming 4.3px on a 390px phone.
-Above 1440 the whole canvas scales as before, so the desktop rendering is
-unchanged. `core/responsive/app_form_factor.dart` picks the composition:
+The frame is 1440×1199 and ScreenUtil scales it by `width / 1440`, as always —
+but only from **900pt** up (`enableScaleWH` / `enableScaleText` in `app.dart`).
+Below 900 scaling is off, so a design pixel *is* a logical pixel: 16sp stays
+16px instead of becoming 4.3px on a 390px phone. `core/responsive/app_form_factor.dart`
+picks the composition:
 
-| Tier | Width | Shell | Filters | KPIs | Tables |
-|---|---|---|---|---|---|
-| `wide` | ≥ 1200 | permanent 280pt sidebar | three pills in one row | three tiles across | the frame's grid |
-| `medium` | 900–1199 | permanent sidebar | pills wrap to a second run | three tiles across | same grid, scrolled sideways |
-| `compact` | < 900 | drawer + hamburger | pills and actions stacked full width | tiles stacked | one card per row |
+| Tier | Width | Shell | Filters | KPIs | Tables | Sizing |
+|---|---|---|---|---|---|---|
+| `desktop` | ≥ 900 | permanent 280pt sidebar | three pills in one row | three tiles across | the frame's grid | scaled by `w / 1440` |
+| `compact` | < 900 | drawer + hamburger | full width below 600, three across from 600 up | stacked below 600, across from 600 up | one card per row | 1:1 |
 
-Why 1200: three 269pt pills plus the 280pt sidebar and 48pt page padding need
-~1183pt. Between 900 and 1199 the grid keeps a readable column width (820pt for
-returns, 900pt for admin) and scrolls horizontally rather than squeezing five
-columns into the window. Below 900 a five-column grid cannot be read at all, so
-every row becomes a card with the status and amount on top and the long fields
-underneath. The admin page and the row form follow the same tiers (stacked
-fields, full-width dialog).
+Why 900: from there the frame still fits when scaled (at 900 that is ×0.625, so
+the three pills take 552pt of the 572pt content column), and the proportional
+look of landscape tablets and small laptop windows is exactly what it was
+before the compact port. Below 900 a five-column grid and a 280pt sidebar
+cannot be read at all, so the sidebar moves into a drawer and every row becomes
+a card with the status and amount on top and the long fields underneath.
+
+Inside `compact` the filters and the KPI tiles only stack below 600pt: on a
+landscape handset (844×390) a stacked column of three dropdowns would fill the
+whole first screen, so from 600 up the three pills share one row (~110pt for
+the block instead of ~420pt) and the tiles stay side by side. The admin page
+and the row form follow the same tiers (stacked fields, full-width dialog).
 
 `test/responsive_layout_test.dart` pumps the shell, filters, KPI panel and both
 tables at 390×844, 1024×768 and 1440×1199 and asserts the switch, so a new
-fixed width in the `wide` composition fails a test instead of silently
+fixed width in the desktop composition fails a test instead of silently
 overflowing on a phone.
 
 ## Data flow

@@ -11,10 +11,8 @@ import 'status_chip.dart';
 
 /// The returns table.
 ///
-/// Three presentations of the same rows:
-/// * wide — the frame's 42pt header plus 50pt rows, five columns;
-/// * medium — the same grid, scrolled horizontally at a readable column width,
-///   because five columns need ~820pt and the window is narrower than that;
+/// Two presentations of the same rows:
+/// * desktop — the frame's 42pt header plus 50pt rows, five columns;
 /// * compact — one card per row, since five columns cannot be read on a phone.
 ///
 /// Header labels come from [kReturnsTableHeaders] (shared with the PDF).
@@ -36,9 +34,7 @@ class ReturnsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AppFormFactor factor = context.formFactor;
-
-    if (factor == AppFormFactor.compact) {
+    if (context.isCompactLayout) {
       return _CardList(
         returns: returns,
         emptyMessage: emptyMessage,
@@ -46,17 +42,10 @@ class ReturnsTable extends StatelessWidget {
       );
     }
 
-    final Widget grid = _Grid(
+    return _Grid(
       returns: returns,
       emptyMessage: emptyMessage,
       onClearFilters: onClearFilters,
-    );
-
-    if (factor == AppFormFactor.wide) return grid;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(width: AppDimens.tableMinWidth, child: grid),
     );
   }
 }

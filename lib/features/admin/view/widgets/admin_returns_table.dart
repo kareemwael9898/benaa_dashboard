@@ -3,16 +3,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/responsive/app_form_factor.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../financial_returns/model/financial_return.dart';
 import '../../../financial_returns/view/widgets/status_chip.dart';
 
 /// Admin list of every return, newest first.
 ///
-/// Same three presentations as the dashboard table: the six-column grid on
-/// wide screens, that grid scrolled sideways on medium ones, and one card per
-/// row on phones.
+/// Same two presentations as the dashboard table: the six-column grid on
+/// desktop widths and one card per row on phones.
 class AdminReturnsTable extends StatelessWidget {
   const AdminReturnsTable({
     super.key,
@@ -31,9 +29,7 @@ class AdminReturnsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AppFormFactor factor = context.formFactor;
-
-    if (factor == AppFormFactor.compact) {
+    if (context.isCompactLayout) {
       return _CardList(
         rows: rows,
         busy: busy,
@@ -42,18 +38,11 @@ class AdminReturnsTable extends StatelessWidget {
       );
     }
 
-    final Widget grid = _Grid(
+    return _Grid(
       rows: rows,
       busy: busy,
       onEdit: onEdit,
       onDelete: onDelete,
-    );
-
-    if (factor == AppFormFactor.wide) return grid;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(width: AppDimens.adminTableMinWidth, child: grid),
     );
   }
 }
