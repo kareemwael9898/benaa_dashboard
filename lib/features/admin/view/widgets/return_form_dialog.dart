@@ -5,7 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../financial_returns/model/financial_return.dart';
 import '../../../financial_returns/model/financial_return_status.dart';
-import '../../../financial_returns/model/return_filter_field.dart';
+import '../../../financial_returns/model/returns_filters.dart';
 
 /// Create / edit form for one return.
 ///
@@ -33,8 +33,7 @@ class _ReturnFormDialogState extends State<ReturnFormDialog> {
 
   /// The city list the dashboard filters on — one source of truth, so an admin
   /// can never create a row the filter can't reach.
-  static List<String> get _cities =>
-      kReturnFilterFields.last.options;
+  static const List<String> _cities = kKnownCities;
 
   @override
   void initState() {

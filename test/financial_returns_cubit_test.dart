@@ -3,13 +3,14 @@ import 'dart:typed_data';
 
 import 'package:benaa_dashboard/features/financial_returns/model/financial_return.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_return_status.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/demo_returns.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_local_data_source.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_payload.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_pdf_builder.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_remote_data_source.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_repository.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_summary.dart';
-import 'package:benaa_dashboard/features/financial_returns/model/return_filter_field.dart';
+import 'package:benaa_dashboard/features/financial_returns/model/returns_filters.dart';
 import 'package:benaa_dashboard/features/financial_returns/view_model/financial_returns_cubit.dart';
 import 'package:benaa_dashboard/features/financial_returns/view_model/financial_returns_state.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,27 +70,144 @@ void main() {
     expect(states.last, isA<FinancialReturnsLoaded>());
 
     final FinancialReturnsLoaded loaded = states.last as FinancialReturnsLoaded;
-    // Three demo rows, two of them in the default city (الدمام).
+    // The default selection is "الكل", so every seeded row is visible.
     expect(loaded.rows, hasLength(3));
-    expect(loaded.returns, hasLength(2));
+    expect(loaded.selectedCity, kAllCities);
+    expect(loaded.returns, hasLength(3));
     expect(loaded.summaries, hasLength(3));
     expect(cache.payload, isNotNull, reason: 'payload should be cached');
   });
 
-  test('selecting another city re-filters without refetching', () async {
+  test('selecting a city re-filters without refetching', () async {
     cubit.load();
     await pumpEventQueue();
-    expect((cubit.state as FinancialReturnsLoaded).returns, hasLength(2));
+    expect((cubit.state as FinancialReturnsLoaded).returns, hasLength(3));
 
-    // Third dropdown, second option ("الرياض").
-    cubit.selectFilter(fieldIndex: 2, optionIndex: 1);
+    cubit.selectCity('الرياض');
 
     final FinancialReturnsLoaded state =
         cubit.state as FinancialReturnsLoaded;
-    expect(state.filters.last.value, 'الرياض');
+    expect(state.selectedCity, 'الرياض');
     expect(state.rows, hasLength(3), reason: 'source rows stay untouched');
     expect(state.returns, hasLength(1));
     expect(state.summaries.first.value, '4,200 ريال');
+  });
+
+  test('الكل restores every row regardless of city', () async {
+    cubit.load();
+    await pumpEventQueue();
+    cubit.selectCity('الرياض');
+    expect((cubit.state as FinancialReturnsLoaded).returns, hasLength(1));
+
+    cubit.selectCity(kAllCities);
+
+    final FinancialReturnsLoaded state =
+        cubit.state as FinancialReturnsLoaded;
+    expect(state.returns, hasLength(3));
+    expect(state.summaries.first.value, '21,700 ريال');
+  });
+
+  test('a live frame keeps the selected city and the query', () async {
+    final _StreamingRemote remote = _StreamingRemote();
+    final FinancialReturnsCubit live = _cubitWith(remote: remote);
+    addTearDown(live.close);
+
+    live.load();
+    await pumpEventQueue();
+    remote.emit(kDemoFinancialReturns);
+    await pumpEventQueue();
+
+    live.selectCity('الرياض');
+    live.search(remote.rows.last.phone);
+
+    // An admin edit lands while the user is filtered.
+    remote.emit(kDemoFinancialReturns);
+    await pumpEventQueue();
+
+    final FinancialReturnsLoaded state = live.state as FinancialReturnsLoaded;
+    expect(state.selectedCity, 'الرياض');
+    expect(state.query, remote.rows.last.phone);
+    expect(state.rows, hasLength(3), reason: 'rows refresh, filter does not');
+  });
+
+  test('search matches the same row across phone spellings', () async {
+    cubit.load();
+    await pumpEventQueue();
+
+    for (final String query in <String>[
+      '0501234567',
+      '501234567',
+      '+966 50 123 4567',
+      '٥٠١٢٣٤٥٦٧',
+    ]) {
+      cubit.search(query);
+      final FinancialReturnsLoaded state =
+          cubit.state as FinancialReturnsLoaded;
+      expect(
+        state.returns.single.reference,
+        '#/#/#',
+        reason: '"$query" should match the +966 50 123 4567 row',
+      );
+    }
+  });
+
+  test('search and city combine with AND', () async {
+    cubit.load();
+    await pumpEventQueue();
+
+    // The Riyadh row's phone, while filtered to الدمام.
+    cubit.selectCity('الدمام');
+    cubit.search('0539072214');
+
+    final FinancialReturnsLoaded state = cubit.state as FinancialReturnsLoaded;
+    expect(state.returns, isEmpty);
+    expect(state.hasActiveFilters, isTrue);
+  });
+
+  test('clearFilters resets the city and the query', () async {
+    cubit.load();
+    await pumpEventQueue();
+    cubit.selectCity('الرياض');
+    cubit.search('0539');
+
+    cubit.clearFilters();
+
+    final FinancialReturnsLoaded state = cubit.state as FinancialReturnsLoaded;
+    expect(state.selectedCity, kAllCities);
+    expect(state.query, isEmpty);
+    expect(state.returns, hasLength(3));
+  });
+
+  test('city options stay reachable for cities that only exist in the data',
+      () async {
+    final _StreamingRemote remote = _StreamingRemote();
+    final FinancialReturnsCubit live = _cubitWith(remote: remote);
+    addTearDown(live.close);
+
+    live.load();
+    await pumpEventQueue();
+    remote.emit(<FinancialReturn>[
+      ...kDemoFinancialReturns,
+      const FinancialReturn(
+        id: 'extra',
+        cityId: 'الخبر',
+        status: FinancialReturnStatus.active,
+        amount: 100,
+        reference: 'RET-9',
+        phone: '+966 50 000 0001',
+        alternatePhone: '+966 50 000 0001',
+      ),
+    ]);
+    await pumpEventQueue();
+
+    final FinancialReturnsLoaded state = live.state as FinancialReturnsLoaded;
+    expect(state.cityOptions, contains('الخبر'));
+
+    live.selectCity('الخبر');
+    expect(
+      (live.state as FinancialReturnsLoaded).returns.single.reference,
+      'RET-9',
+    );
   });
 
   test('cached payload paints before the live stream arrives', () async {
@@ -171,9 +289,26 @@ class _ThrowingPdfBuilder extends FinancialReturnsPdfBuilder {
   Future<Uint8List> build({
     required List<FinancialSummary> summaries,
     required List<FinancialReturn> returns,
-    required List<ReturnFilterField> filters,
+    required String selectedCity,
+    required String query,
     DateTime? generatedAt,
   }) async {
     throw StateError('render failed');
   }
+}
+
+/// Remote whose frames are pushed by the test.
+class _StreamingRemote implements FinancialReturnsRemoteDataSource {
+  final StreamController<FinancialReturnsPayload> _controller =
+      StreamController<FinancialReturnsPayload>.broadcast();
+
+  List<FinancialReturn> rows = kDemoFinancialReturns;
+
+  void emit(List<FinancialReturn> payloadRows) {
+    rows = payloadRows;
+    _controller.add(FinancialReturnsPayload(rows: payloadRows));
+  }
+
+  @override
+  Stream<FinancialReturnsPayload> watch() => _controller.stream;
 }

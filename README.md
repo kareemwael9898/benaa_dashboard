@@ -131,10 +131,10 @@ Firestore `returns` ──▶ FirestoreFinancialReturnsRemoteDataSource.watch()
                      ──▶ FinancialReturnsCubit ──▶ FinancialReturnsLoaded
 ```
 
-`FinancialReturnsLoaded` holds *every* row plus the dropdown state; the visible
-subset and the KPI tiles are getters on the state. Changing the city dropdown
-therefore re-filters in memory — no refetch, no loading flash, and the tiles
-always describe exactly the rows on screen:
+`FinancialReturnsLoaded` holds *every* row plus the filter (`selectedCity` and
+the phone `query`); the visible subset and the KPI tiles are getters on the
+state. Changing a filter therefore re-filters in memory — no refetch, no
+loading flash, and the tiles always describe exactly the rows on screen:
 
 | Tile | Value |
 |---|---|
@@ -144,6 +144,26 @@ always describe exactly the rows on screen:
 
 Amounts are stored as numbers and formatted once (`formatAmount`), so a tile can
 never drift from the table beneath it.
+
+## Filters and search
+
+The frame repeats the same dropdown three times; all three are bound to one
+`selectedCity` value, so whichever pill is used the table follows and the other
+two update with it — no pill is decorative.
+
+- Options are `الكل` (the default), the known cities, then any city that only
+  exists in the data, plus `غير محدد` for rows with a blank `cityId`. The
+  selected value is always kept in the list, so a pill never flips to a blank
+  label when its last row disappears.
+- `بحث برقم الجوال` is a real field: it matches the primary and alternate phone
+  numbers after normalising (digits only, `+966`/`00`/trunk `0` stripped,
+  Arabic-Indic digits folded), so `0501234567`, `+966 50 123 4567` and
+  `٥٠١٢٣٤٥٦٧` all find the same row.
+- City and search combine with AND; the KPIs, the table and the PDF all read
+  the same visible list, so they can't drift.
+- When the filters exclude everything, the table says
+  `لا توجد نتائج مطابقة للفلاتر` and offers `مسح الفلاتر` (a truly empty
+  collection still reads `لا توجد بيانات`).
 
 ## PDF export / print
 
@@ -191,6 +211,9 @@ flutter test
   first frame then live frame, failure state, plus PDF generation and its two
   `null` paths.
 - `financial_returns_kpi_test.dart` — sums, active count, empty list, decimals.
+- `returns_filters_test.dart` — phone normalisation (every spelling of the same
+  number), `الكل`, cities that only exist in the data, the uncategorised bucket,
+  and the guarantee that the current selection stays in the option list.
 - `financial_returns_pdf_test.dart` — the bytes are a terminated PDF with an
   embedded font, and the empty-state report still renders.
 - `admin_returns_cubit_test.dart` — load, create/delete with success feedback,
@@ -200,7 +223,7 @@ flutter test
 
 | Where | What the file contains |
 |---|---|
-| Filter row | Three identical dropdowns: label `الدولة`, value `الدمام` |
+| Filter row | Three identical dropdowns — all three now drive the same city; the label reads `المدينة` |
 | Table header | All five columns read `رقم الجوال` |
 | Sidebar | `صلاحيات المستخدم` repeated 5× — collapsed to one |
 | Logo | Mark is drawn as three gold bars; the Figma paths were not exported |
@@ -221,6 +244,10 @@ demo copy lives in `kDemoFinancialReturns`.
   doesn't reorder them.
 - The sidebar in the frame is 826pt tall (the page is 1199); it is stretched to
   full height here, and its navigation list scrolls.
+- The repository composes the cache frame and the live stream with
+  `Stream.multi` rather than an `async*` generator: cancelling a generator
+  parked in `await for` can leave the inner subscription (and the cancel
+  future) pending, which would leak a Firestore listener on every dispose.
 - Newest-first ordering is applied in Dart (`newestFirst`), not with
   `orderBy('createdAt')`: a row written with `serverTimestamp()` has a pending
   null timestamp in the local snapshot, and an ordered query would hide it until

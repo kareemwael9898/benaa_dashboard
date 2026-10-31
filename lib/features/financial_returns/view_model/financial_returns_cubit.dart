@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../model/financial_returns_payload.dart';
 import '../model/financial_returns_pdf_builder.dart';
 import '../model/financial_returns_repository.dart';
-import '../model/return_filter_field.dart';
+import '../model/returns_filters.dart';
 import 'financial_returns_state.dart';
 
 /// Business logic for the financial-returns screen.
@@ -23,53 +23,86 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
   StreamSubscription<FinancialReturnsPayload>? _subscription;
 
   /// Subscribes to the source. Called once on screen mount and again on retry.
+  ///
+  /// The current filter travels through [FinancialReturnsLoading] into the next
+  /// [FinancialReturnsLoaded], so a reconnect never drops the user's selection.
   void load() {
     unawaited(_subscription?.cancel());
-    emit(FinancialReturnsLoading(filters: state.filters));
+    emit(
+      FinancialReturnsLoading(
+        selectedCity: state.selectedCity,
+        query: state.query,
+      ),
+    );
 
     _subscription = _repository.watchReturns().listen(
       (FinancialReturnsPayload payload) {
         if (isClosed) return;
         emit(
-          FinancialReturnsLoaded(filters: state.filters, rows: payload.rows),
+          FinancialReturnsLoaded(
+            rows: payload.rows,
+            selectedCity: state.selectedCity,
+            query: state.query,
+          ),
         );
       },
       onError: (Object _) {
         if (isClosed) return;
         emit(
           FinancialReturnsFailure(
-            filters: state.filters,
             message: 'تعذّر تحميل العوائد المالية، حاول مرة أخرى.',
+            selectedCity: state.selectedCity,
+            query: state.query,
           ),
         );
       },
     );
   }
 
-  /// Updates one dropdown selection.
+  /// Applies a city to the whole filter row.
   ///
   /// The subscription is untouched: every row is already in memory, so this is
   /// a local re-filter rather than a network round-trip.
-  void selectFilter({required int fieldIndex, required int optionIndex}) {
-    final List<ReturnFilterField> current = state.filters;
-    if (fieldIndex < 0 || fieldIndex >= current.length) return;
-    if (current[fieldIndex].selectedIndex == optionIndex) return;
+  void selectCity(String city) {
+    if (city == state.selectedCity) return;
+    emit(_withFilters(selectedCity: city));
+  }
 
-    final List<ReturnFilterField> updated = List<ReturnFilterField>.of(current);
-    updated[fieldIndex] = updated[fieldIndex].withIndex(optionIndex);
+  /// Applies the phone search (already debounced by the field if needed).
+  void search(String value) {
+    if (value == state.query) return;
+    emit(_withFilters(query: value));
+  }
 
-    emit(switch (state) {
+  void clearFilters() => emit(_withFilters(selectedCity: kAllCities, query: ''));
+
+  FinancialReturnsState _withFilters({
+    String? selectedCity,
+    String? query,
+  }) {
+    final String city = selectedCity ?? state.selectedCity;
+    final String text = query ?? state.query;
+
+    return switch (state) {
       FinancialReturnsLoaded loaded => FinancialReturnsLoaded(
-        filters: updated,
         rows: loaded.rows,
+        selectedCity: city,
+        query: text,
       ),
-      FinancialReturnsLoading() => FinancialReturnsLoading(filters: updated),
+      FinancialReturnsLoading() => FinancialReturnsLoading(
+        selectedCity: city,
+        query: text,
+      ),
       FinancialReturnsFailure failure => FinancialReturnsFailure(
-        filters: updated,
         message: failure.message,
+        selectedCity: city,
+        query: text,
       ),
-      FinancialReturnsInitial() => FinancialReturnsInitial(filters: updated),
-    });
+      FinancialReturnsInitial() => FinancialReturnsInitial(
+        selectedCity: city,
+        query: text,
+      ),
+    };
   }
 
   /// Renders the currently displayed rows as a PDF.
@@ -84,7 +117,8 @@ class FinancialReturnsCubit extends Cubit<FinancialReturnsState> {
       return await _pdfBuilder.build(
         summaries: current.summaries,
         returns: current.returns,
-        filters: current.filters,
+        selectedCity: current.selectedCity,
+        query: current.query,
       );
     } catch (_) {
       return null;

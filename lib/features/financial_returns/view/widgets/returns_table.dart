@@ -12,9 +12,20 @@ import 'status_chip.dart';
 ///
 /// Header labels come from [kReturnsTableHeaders] (shared with the PDF).
 class ReturnsTable extends StatelessWidget {
-  const ReturnsTable({super.key, required this.returns});
+  const ReturnsTable({
+    super.key,
+    required this.returns,
+    this.emptyMessage = 'لا توجد بيانات',
+    this.onClearFilters,
+  });
 
   final List<FinancialReturn> returns;
+
+  /// Shown instead of rows; the filters decide which wording is right.
+  final String emptyMessage;
+
+  /// Rendered inside the empty row when the emptiness is caused by filters.
+  final VoidCallback? onClearFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +40,10 @@ class ReturnsTable extends StatelessWidget {
         children: [
           _HeaderRow(labels: kReturnsTableHeaders),
           if (returns.isEmpty)
-            const _EmptyRow()
+            _EmptyRow(
+              message: emptyMessage,
+              onClearFilters: onClearFilters,
+            )
           else
             for (final FinancialReturn row in returns) _DataRow(row: row),
         ],
@@ -145,16 +159,38 @@ class _TableCell extends StatelessWidget {
 
 
 class _EmptyRow extends StatelessWidget {
-  const _EmptyRow();
+  const _EmptyRow({required this.message, this.onClearFilters});
+
+  final String message;
+  final VoidCallback? onClearFilters;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 50.h,
+      height: 90.h,
       child: Container(
         color: AppColors.surface,
         alignment: Alignment.center,
-        child: Text('لا توجد بيانات', style: AppTextStyles.body16Muted),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(message, style: AppTextStyles.body16Muted),
+            if (onClearFilters != null) ...[
+              SizedBox(height: 4.h),
+              TextButton(
+                onPressed: onClearFilters,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.gold,
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: Text(
+                  'مسح الفلاتر',
+                  style: AppTextStyles.body14.copyWith(color: AppColors.gold),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -4,7 +4,6 @@ import 'package:benaa_dashboard/features/financial_returns/model/financial_retur
 import 'package:benaa_dashboard/features/financial_returns/model/financial_return_status.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_returns_pdf_builder.dart';
 import 'package:benaa_dashboard/features/financial_returns/model/financial_summary.dart';
-import 'package:benaa_dashboard/features/financial_returns/model/return_filter_field.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _summary = FinancialSummary(
@@ -30,7 +29,8 @@ void main() {
     final Uint8List bytes = await const FinancialReturnsPdfBuilder().build(
       summaries: const <FinancialSummary>[_summary, _summary, _summary],
       returns: const <FinancialReturn>[_row],
-      filters: kReturnFilterFields,
+      selectedCity: 'الدمام',
+      query: '',
       generatedAt: DateTime(2026, 10, 29, 13, 15, 57),
     );
 
@@ -51,7 +51,8 @@ void main() {
     final Uint8List bytes = await const FinancialReturnsPdfBuilder().build(
       summaries: const <FinancialSummary>[_summary],
       returns: const <FinancialReturn>[],
-      filters: kReturnFilterFields,
+      selectedCity: 'الدمام',
+      query: '',
     );
 
     expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
@@ -62,7 +63,8 @@ void main() {
     final Uint8List bytes = await const FinancialReturnsPdfBuilder().build(
       summaries: const <FinancialSummary>[_summary],
       returns: const <FinancialReturn>[_row],
-      filters: kReturnFilterFields,
+      selectedCity: 'الدمام',
+      query: '',
     );
 
     final String raw = String.fromCharCodes(bytes);

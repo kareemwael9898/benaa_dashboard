@@ -8,7 +8,6 @@ import '../../../core/utils/date_time_format.dart';
 import 'financial_return.dart';
 import 'financial_return_status.dart';
 import 'financial_summary.dart';
-import 'return_filter_field.dart';
 import 'returns_table_columns.dart';
 
 /// Renders the financial-returns screen as a printable A4 report.
@@ -55,7 +54,8 @@ class FinancialReturnsPdfBuilder {
   Future<Uint8List> build({
     required List<FinancialSummary> summaries,
     required List<FinancialReturn> returns,
-    required List<ReturnFilterField> filters,
+    required String selectedCity,
+    required String query,
     DateTime? generatedAt,
   }) async {
     final (pw.Font regular, pw.Font bold) = await _loadFonts();
@@ -81,7 +81,7 @@ class FinancialReturnsPdfBuilder {
         build: (pw.Context context) => <pw.Widget>[
           _header(stamp),
           pw.SizedBox(height: 14),
-          _filterChips(filters),
+          _filterChips(selectedCity: selectedCity, query: query),
           pw.SizedBox(height: 12),
           _kpiRow(summaries),
           pw.SizedBox(height: 18),
@@ -165,22 +165,29 @@ class FinancialReturnsPdfBuilder {
     );
   }
 
-  pw.Widget _filterChips(List<ReturnFilterField> filters) {
+  /// States the filters that were actually applied — the old three identical
+  /// `الدولة` chips claimed filters the table never used.
+  pw.Widget _filterChips({
+    required String selectedCity,
+    required String query,
+  }) {
+    final List<(String, String)> chips = <(String, String)>[
+      ('المدينة', selectedCity),
+      if (query.trim().isNotEmpty) ('البحث', query.trim()),
+    ];
+
     return pw.Wrap(
       spacing: 8,
       runSpacing: 6,
       children: [
-        for (final ReturnFilterField field in filters)
+        for (final (String label, String value) in chips)
           pw.Container(
             padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: pw.BoxDecoration(
               color: _zebra,
               borderRadius: pw.BorderRadius.circular(8),
             ),
-            child: pw.Text(
-              '${field.label}: ${field.value}',
-              style: _style(size: 8.5),
-            ),
+            child: pw.Text('$label: $value', style: _style(size: 8.5)),
           ),
       ],
     );

@@ -5,19 +5,22 @@ import '../../../../core/constants/app_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimens.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../model/return_filter_field.dart';
 
 /// Bold label + dark pill with a chevron on the left and the value on the
 /// right, matching the "Component 3" dropdown in the frame.
 class ReturnsFilterFieldView extends StatelessWidget {
   const ReturnsFilterFieldView({
     super.key,
-    required this.field,
+    required this.label,
+    required this.options,
+    required this.value,
     required this.onSelected,
   });
 
-  final ReturnFilterField field;
-  final ValueChanged<int> onSelected;
+  final String label;
+  final List<String> options;
+  final String value;
+  final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -28,24 +31,21 @@ class ReturnsFilterFieldView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            field.label,
+            label,
             textAlign: TextAlign.start,
             style: AppTextStyles.body18Bold,
           ),
           SizedBox(height: 8.h),
-          PopupMenuButton<int>(
+          PopupMenuButton<String>(
             tooltip: '',
             position: PopupMenuPosition.under,
             color: AppColors.surfaceField,
             onSelected: onSelected,
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<int>>[
-              for (int i = 0; i < field.options.length; i++)
-                PopupMenuItem<int>(
-                  value: i,
-                  child: Text(
-                    field.options[i],
-                    style: AppTextStyles.body18,
-                  ),
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              for (final String option in options)
+                PopupMenuItem<String>(
+                  value: option,
+                  child: Text(option, style: AppTextStyles.body18),
                 ),
             ],
             child: Container(
@@ -59,7 +59,7 @@ class ReturnsFilterFieldView extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      field.value,
+                      value,
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

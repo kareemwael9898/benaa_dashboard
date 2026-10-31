@@ -3,25 +3,28 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../model/return_filter_field.dart';
+import '../../model/returns_filters.dart';
 import 'returns_action_button.dart';
 import 'returns_filter_field.dart';
 
-/// The "انواع الباقات" block: three dropdowns, then the print / PDF actions.
+/// The "انواع الباقات" block: three city pills, then the print / PDF actions.
+///
+/// The frame repeats the same dropdown three times; they are all bound to
+/// [selectedCity] here, so whichever pill is used, the table follows and the
+/// other two update with it.
 class ReturnsFiltersSection extends StatelessWidget {
   const ReturnsFiltersSection({
     super.key,
-    required this.filters,
-    required this.onFilterSelected,
+    required this.cityOptions,
+    required this.selectedCity,
+    required this.onCitySelected,
     required this.onPrint,
     required this.onExportPdf,
   });
 
-  final List<ReturnFilterField> filters;
-
-  /// `(fieldIndex, optionIndex)`.
-  final void Function(int fieldIndex, int optionIndex) onFilterSelected;
-
+  final List<String> cityOptions;
+  final String selectedCity;
+  final ValueChanged<String> onCitySelected;
   final VoidCallback onPrint;
   final VoidCallback onExportPdf;
 
@@ -32,15 +35,16 @@ class ReturnsFiltersSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            for (int i = 0; i < filters.length; i++)
+            for (int i = 0; i < kFilterPillCount; i++)
               Padding(
                 padding: EdgeInsetsDirectional.only(
-                  end: i == filters.length - 1 ? 0 : 24.w,
+                  end: i == kFilterPillCount - 1 ? 0 : 24.w,
                 ),
                 child: ReturnsFilterFieldView(
-                  field: filters[i],
-                  onSelected: (int optionIndex) =>
-                      onFilterSelected(i, optionIndex),
+                  label: 'المدينة',
+                  options: cityOptions,
+                  value: selectedCity,
+                  onSelected: onCitySelected,
                 ),
               ),
           ],

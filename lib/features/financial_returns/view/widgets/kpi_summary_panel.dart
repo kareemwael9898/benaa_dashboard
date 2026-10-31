@@ -16,12 +16,27 @@ class KpiSummaryPanel extends StatelessWidget {
     super.key,
     required this.summaries,
     required this.returns,
-    this.onSearchTap,
+    required this.query,
+    required this.onQueryChanged,
+    required this.hasActiveFilters,
+    required this.onClearFilters,
+    this.hasAnyRows = true,
   });
 
   final List<FinancialSummary> summaries;
   final List<FinancialReturn> returns;
-  final VoidCallback? onSearchTap;
+
+  /// Current phone search, owned by the Cubit.
+  final String query;
+  final ValueChanged<String> onQueryChanged;
+
+  /// Whether the emptiness (if any) is caused by the city pill or the search.
+  final bool hasActiveFilters;
+  final VoidCallback onClearFilters;
+
+  /// False when the collection itself is empty — the message must not blame
+  /// the filters for that.
+  final bool hasAnyRows;
 
   @override
   Widget build(BuildContext context) {
@@ -53,9 +68,17 @@ class KpiSummaryPanel extends StatelessWidget {
             ),
           ),
           SizedBox(height: AppDimens.sectionGap),
-          ReturnsSearchField(onTap: onSearchTap),
+          ReturnsSearchField(value: query, onChanged: onQueryChanged),
           SizedBox(height: AppDimens.sectionGap),
-          ReturnsTable(returns: returns),
+          ReturnsTable(
+            returns: returns,
+            emptyMessage: hasActiveFilters && hasAnyRows
+                ? 'لا توجد نتائج مطابقة للفلاتر'
+                : 'لا توجد بيانات',
+            onClearFilters: hasActiveFilters && hasAnyRows
+                ? onClearFilters
+                : null,
+          ),
         ],
       ),
     );

@@ -33,13 +33,9 @@ class ReturnsPageContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ReturnsFiltersSection(
-            filters: state.filters,
-            onFilterSelected: (int fieldIndex, int optionIndex) {
-              cubit.selectFilter(
-                fieldIndex: fieldIndex,
-                optionIndex: optionIndex,
-              );
-            },
+            cityOptions: state.cityOptions,
+            selectedCity: state.selectedCity,
+            onCitySelected: cubit.selectCity,
             onPrint: () => _handOffReport(context, print: true),
             onExportPdf: () => _handOffReport(context, print: false),
           ),
@@ -47,6 +43,11 @@ class ReturnsPageContent extends StatelessWidget {
           KpiSummaryPanel(
             summaries: state.summaries,
             returns: state.returns,
+            query: state.query,
+            onQueryChanged: cubit.search,
+            hasActiveFilters: state.hasActiveFilters,
+            onClearFilters: cubit.clearFilters,
+            hasAnyRows: state.rows.isNotEmpty,
           ),
         ],
       ),
